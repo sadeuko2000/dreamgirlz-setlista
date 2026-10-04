@@ -6,7 +6,29 @@ const SB_KEY = "sb_publishable_6nPNEGdhVIBnSQFF6GO4Lg_RgN8uTiy";
 const OWNER_EMAIL = "brocki.adam@gmail.com";
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 window.__sb = sb;
-window.__blobBase = SB_URL + "/storage/v1/object/public/audio/";
+const CREW_EMAIL = "ekipa@dreamgirlz-setlista.app";
+
+/* music is private: each file plays through a signed link valid for a few hours */
+const signed = new Map();   // assetId -> {url, exp}
+let signing = null;
+function signMissing(force) {
+  const now = Date.now();
+  const ids = [...new Set([...(cache.get("versions") || new Map()).values()].map(v => v && v.assetId).filter(Boolean))]
+    .filter(a => force || !signed.has(a) || signed.get(a).exp - now < 30 * 60e3);
+  if (!ids.length) return signing || Promise.resolve();
+  const run = (async () => {
+    for (let i = 0; i < ids.length; i += 100) {
+      const part = ids.slice(i, i + 100);
+      const { data } = await sb.storage.from("audio").createSignedUrls(part, 6 * 3600);
+      (data || []).forEach((x, j) => { const u = x && (x.signedUrl || x.signedURL); if (u) signed.set(part[j], { url: u, exp: Date.now() + 6 * 3600e3 }); });
+    }
+  })();
+  signing = run.finally(() => { if (signing === run) signing = null; });
+  return run;
+}
+window.__blobUrl = a => signed.get(a)?.url || (SB_URL + "/storage/v1/object/authenticated/audio/" + a);
+window.__blobReady = () => signMissing(false);
+setInterval(() => signMissing(false), 10 * 60e3);
 
 const rid = () => { const a = "abcdefghijklmnopqrstuvwxyz0123456789"; let s = ""; const r = crypto.getRandomValues(new Uint8Array(20)); for (const x of r) s += a[x % a.length]; return s; };
 const err = (code, message) => Object.assign(new Error(message || code), { code });
@@ -19,7 +41,7 @@ const docSubs = new Map();         // "c/id" -> Set(fn)
 const snapOf = c => ({ docs: [...(cache.get(c) || new Map()).entries()].map(([id, d]) => ({ id, data: () => d })) });
 const fireCol = c => (colSubs.get(c) || []).forEach(f => { try { f(snapOf(c)); } catch (e) { console.error(e); } });
 const fireDoc = (c, id) => { const d = cache.get(c)?.get(id); (docSubs.get(c + "/" + id) || []).forEach(f => { try { f({ exists: !!d, id, data: () => d || {} }); } catch (e) { console.error(e); } }); };
-const putLocal = (c, id, d) => { if (!cache.has(c)) cache.set(c, new Map()); if (d) cache.get(c).set(id, d); else cache.get(c).delete(id); fireCol(c); fireDoc(c, id); };
+const putLocal = (c, id, d) => { if (!cache.has(c)) cache.set(c, new Map()); if (d) cache.get(c).set(id, d); else cache.get(c).delete(id); if (c === "versions") signMissing(false); fireCol(c); fireDoc(c, id); };
 
 function load(c) {
   if (loaded.has(c)) return loaded.get(c);
@@ -31,6 +53,7 @@ function load(c) {
       data.forEach(r => all.set(r.id, r.data)); if (data.length < 1000) break; from += 1000;
     }
     cache.set(c, all);
+    if (c === "versions") await signMissing(false);
   })();
   loaded.set(c, p); return p;
 }
@@ -129,7 +152,9 @@ const assetsApi = {
     const id = rid() + "." + ext;
     const { error } = await sb.storage.from("audio").upload(id, blob, { contentType: type, upsert: false });
     if (error) throw err(/too large|exceed/i.test(error.message) ? "too_large" : "upload_failed", error.message);
-    return { id, url: window.__blobBase + id, sizeBytes: blob.size, contentType: type };
+    const { data: su } = await sb.storage.from("audio").createSignedUrl(id, 6 * 3600);
+    if (su?.signedUrl) signed.set(id, { url: su.signedUrl, exp: Date.now() + 6 * 3600e3 });
+    return { id, url: window.__blobUrl(id), sizeBytes: blob.size, contentType: type };
   },
   delete: async id => { if (!isOwner()) throw err("not_granted"); await sb.storage.from("audio").remove([id]); },
   list: async () => ({ assets: [], usage: {} })
@@ -138,8 +163,34 @@ const downloadsApi = {
   save: async ({ filename, data }) => { const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data])); const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
 };
 
-const ready = sb.auth.getSession().then(r => { session = r.data.session; document.documentElement.classList.toggle("crew-guest", !isOwner()); });
-sb.auth.onAuthStateChange((_e, s) => { const was = isOwner(); session = s; if (isOwner() !== was) location.reload(); });
+/* nothing loads until someone signs in: the crew with the shared password, Adam with his own */
+const ready = sb.auth.getSession().then(async r => {
+  session = r.data.session;
+  if (!session) await gate();
+  document.documentElement.classList.toggle("crew-guest", !isOwner());
+});
+function gate() {
+  return new Promise(done => {
+    const show = () => {
+      const m = document.createElement("div"); m.className = "crew-modal crew-gate";
+      m.innerHTML = `<form class="crew-card"><h3>DREAM GIRLZ · setlista</h3><p class="hint">Wpisz hasło ekipy.</p>
+        <input class="in" name="p" type="password" placeholder="Hasło" autocomplete="current-password" required>
+        <div class="crew-row"><button type="button" class="btn ghost" data-own>Jestem Adamem (muzyka)</button><button class="btn primary">Wejdź</button></div><p class="crew-msg"></p></form>`;
+      document.body.append(m);
+      const f = m.querySelector("form"), msg = m.querySelector(".crew-msg");
+      setTimeout(() => f.p.focus(), 30);
+      m.querySelector("[data-own]").onclick = () => { ownerLogin(); };
+      f.onsubmit = async e => {
+        e.preventDefault(); msg.textContent = "Sprawdzam…";
+        const { data, error } = await sb.auth.signInWithPassword({ email: CREW_EMAIL, password: f.p.value });
+        if (error) { msg.textContent = "Złe hasło."; return; }
+        session = data.session; m.remove(); done();
+      };
+    };
+    if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
+  });
+}
+sb.auth.onAuthStateChange((ev, s) => { const was = isOwner(); session = s; if (isOwner() !== was || ev === "SIGNED_OUT") location.reload(); });
 
 window.claude = {
   use: async name => {
@@ -173,7 +224,7 @@ function ui() {
   if (!isOwner() && !myName()) setTimeout(askName, 600);
 }
 function modal(html, onOk) {
-  const m = document.createElement("div"); m.className = "crew-modal"; m.innerHTML = `<form class="crew-card">${html}<div class="crew-row"><button type="button" class="btn ghost" data-x>Anuluj</button><button class="btn primary">OK</button></div><p class="crew-msg"></p></form>`;
+  const m = document.createElement("div"); m.className = "crew-modal"; m.style.zIndex = 210; m.innerHTML = `<form class="crew-card">${html}<div class="crew-row"><button type="button" class="btn ghost" data-x>Anuluj</button><button class="btn primary">OK</button></div><p class="crew-msg"></p></form>`;
   document.body.append(m);
   const f = m.querySelector("form"), msg = m.querySelector(".crew-msg");
   m.querySelector("[data-x]").onclick = () => m.remove();
@@ -181,7 +232,7 @@ function modal(html, onOk) {
   setTimeout(() => f.querySelector("input")?.focus(), 30);
 }
 function askName() {
-  modal(`<h3>Jak się podpisać?</h3><p class="hint">Twoje imię pojawi się przy notatkach i uwagach. Edytować możesz bez logowania.</p><input class="in" name="n" maxlength="30" value="${(myName() || "").replace(/"/g, "&quot;")}" placeholder="np. Kasia" required>`,
+  modal(`<h3>Jak się podpisać?</h3><p class="hint">Twoje imię pojawi się przy notatkach i uwagach.</p><input class="in" name="n" maxlength="30" value="${(myName() || "").replace(/"/g, "&quot;")}" placeholder="np. Kasia" required>`,
     async f => { const n = f.n.value.trim(); if (!n) return false; try { localStorage.setItem("crewName", n); } catch {} try { await dbApi.doc("people/" + localId).set({ name: n, at: Date.now() }); } catch {} document.querySelector(".crew-box")?.remove(); ui(); });
 }
 function ownerLogin() {
@@ -201,6 +252,7 @@ const css = document.createElement("style");
 css.textContent = `.crew-box{display:flex;align-items:center;gap:6px}.crew-live{width:8px;height:8px;border-radius:50%;background:var(--warn,#E3A04C)}.crew-live.ok{background:var(--ok,#6CC08B)}
 .crew-btn{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap}.crew-btn.ghost{color:var(--muted)}.crew-btn:hover{border-color:var(--muted)}
 html.crew-guest #askDelS,html.crew-guest [data-askdelv]{display:none!important}
+.crew-modal.crew-gate{background:var(--bg,#1C1D20)}
 .crew-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.crew-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,8px);padding:20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:10px}.crew-card h3{margin:0;font-size:18px}.crew-card p{margin:0}.crew-row{display:flex;justify-content:flex-end;gap:8px}.crew-msg{font-size:13px;color:var(--warn,#E3A04C)}`;
 document.head.append(css);
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => ready.then(ui)); else ready.then(ui);
