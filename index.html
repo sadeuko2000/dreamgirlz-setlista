@@ -993,7 +993,7 @@ let session = null;
 const isOwner = () => (session?.user?.email || "").toLowerCase() === OWNER_EMAIL;
 let localId = null; try { localId = localStorage.getItem("crewId"); if (!localId) { localId = "c_" + rid(); localStorage.setItem("crewId", localId); } } catch { localId = "c_" + rid(); }
 const myId = () => isOwner() ? "owner" : localId;
-const myName = () => { try { return localStorage.getItem("crewName") || ""; } catch { return ""; } };
+const myName = () => "Ekipa";
 const userApi = {
   id: async () => myId(),
   me: async () => ({ id: myId(), name: isOwner() ? "Adam" : myName() }),
@@ -1037,21 +1037,21 @@ const ready = sb.auth.getSession().then(async r => {
   if (!session) await gate();
   document.documentElement.classList.toggle("crew-guest", !isOwner());
 });
+const loginEmail = u => { u = u.trim().toLowerCase(); if (u.includes("@")) return u; u = u.replace(/[^a-z0-9._-]/g, ""); return u === "adam" ? OWNER_EMAIL : u + CREW_DOMAIN; };
 function gate() {
   return new Promise(done => {
     const show = () => {
       const m = document.createElement("div"); m.className = "crew-modal crew-gate";
-      m.innerHTML = `<form class="crew-card"><h3>DREAM GIRLZ · setlista</h3><p class="hint">Wpisz login i hasło ekipy.</p>
+      m.innerHTML = `<form class="crew-card"><h3>DREAM GIRLZ · setlista</h3><p class="hint">Wpisz login i hasło.</p>
         <input class="in" name="u" type="text" placeholder="Użytkownik" autocomplete="username" autocapitalize="off" spellcheck="false" required>
         <input class="in" name="p" type="password" placeholder="Hasło" autocomplete="current-password" required>
-        <div class="crew-row"><button type="button" class="btn ghost" data-own>Jestem Adamem (muzyka)</button><button class="btn primary">Wejdź</button></div><p class="crew-msg"></p></form>`;
+        <div class="crew-row"><button class="btn primary">Wejdź</button></div><p class="crew-msg"></p></form>`;
       document.body.append(m);
       const f = m.querySelector("form"), msg = m.querySelector(".crew-msg");
       setTimeout(() => f.u.focus(), 30);
-      m.querySelector("[data-own]").onclick = () => { ownerLogin(); };
       f.onsubmit = async e => {
         e.preventDefault(); msg.textContent = "Sprawdzam…";
-        const { data, error } = await sb.auth.signInWithPassword({ email: f.u.value.trim().toLowerCase().replace(/[^a-z0-9._-]/g,"") + CREW_DOMAIN, password: f.p.value });
+        const { data, error } = await sb.auth.signInWithPassword({ email: loginEmail(f.u.value), password: f.p.value });
         if (error) { msg.textContent = "Zły login lub hasło."; return; }
         session = data.session; m.remove(); done();
       };
@@ -1083,14 +1083,12 @@ function ui() {
   const render = () => {
     box.innerHTML = "";
     box.append(live);
-    const who = document.createElement("button"); who.className = "crew-btn";
-    if (isOwner()) { who.textContent = "Adam · wyloguj"; who.title = "Zalogowany: możesz wgrywać muzykę i trwale usuwać"; who.onclick = async () => { await sb.auth.signOut(); }; }
-    else { who.textContent = myName() ? "✎ " + myName() : "✎ Podpisz się"; who.title = "Twoje imię przy notatkach i uwagach"; who.onclick = askName; }
+    const who = document.createElement("button"); who.className = "crew-btn ghost";
+    who.textContent = isOwner() ? "Adam · wyloguj" : "Wyloguj"; who.title = isOwner() ? "Zalogowany jako Adam: możesz wgrywać muzykę i trwale usuwać" : "Wyloguj z setlisty";
+    who.onclick = async () => { await sb.auth.signOut(); };
     box.append(who);
-    if (!isOwner()) { const lg = document.createElement("button"); lg.className = "crew-btn ghost"; lg.textContent = "Muzyka ↪"; lg.title = "Logowanie dla osoby, która wgrywa nagrania"; lg.onclick = ownerLogin; box.append(lg); }
   };
   render();
-  if (!isOwner() && !myName()) setTimeout(askName, 600);
 }
 function modal(html, onOk) {
   const m = document.createElement("div"); m.className = "crew-modal"; m.style.zIndex = 210; m.innerHTML = `<form class="crew-card">${html}<div class="crew-row"><button type="button" class="btn ghost" data-x>Anuluj</button><button class="btn primary">OK</button></div><p class="crew-msg"></p></form>`;
@@ -1099,23 +1097,6 @@ function modal(html, onOk) {
   m.querySelector("[data-x]").onclick = () => m.remove();
   f.onsubmit = async e => { e.preventDefault(); const r = await onOk(f, t => { msg.textContent = t; }); if (r !== false) m.remove(); };
   setTimeout(() => f.querySelector("input")?.focus(), 30);
-}
-function askName() {
-  modal(`<h3>Jak się podpisać?</h3><p class="hint">Twoje imię pojawi się przy notatkach i uwagach.</p><input class="in" name="n" maxlength="30" value="${(myName() || "").replace(/"/g, "&quot;")}" placeholder="np. Kasia" required>`,
-    async f => { const n = f.n.value.trim(); if (!n) return false; try { localStorage.setItem("crewName", n); } catch {} try { await dbApi.doc("people/" + localId).set({ name: n, at: Date.now() }); } catch {} document.querySelector(".crew-box")?.remove(); ui(); });
-}
-function ownerLogin() {
-  modal(`<h3>Logowanie: muzyka</h3><p class="hint">Tylko dla osoby, która wgrywa nagrania (${OWNER_EMAIL}).</p><input class="in" name="p" type="password" placeholder="Hasło" autocomplete="current-password" required><label class="hint"><input type="checkbox" name="first"> Pierwszy raz: ustaw to hasło (przyjdzie mail z potwierdzeniem)</label>`,
-    async (f, say) => {
-      const password = f.p.value;
-      if (f.first.checked) {
-        const { error } = await sb.auth.signUp({ email: OWNER_EMAIL, password, options: { emailRedirectTo: location.origin + location.pathname } });
-        if (error) { say(error.message); return false; }
-        say("Wysłano mail. Kliknij link w mailu, potem wróć tu i zaloguj się tym hasłem (bez zaznaczania tego pola)."); return false;
-      }
-      const { error } = await sb.auth.signInWithPassword({ email: OWNER_EMAIL, password });
-      if (error) { say(/confirm/i.test(error.message) ? "Najpierw kliknij link w mailu z potwierdzeniem." : "Złe hasło."); return false; }
-    });
 }
 const css = document.createElement("style");
 css.textContent = `.crew-box{display:flex;align-items:center;gap:6px}.crew-live{width:8px;height:8px;border-radius:50%;background:var(--warn,#E3A04C)}.crew-live.ok{background:var(--ok,#6CC08B)}
