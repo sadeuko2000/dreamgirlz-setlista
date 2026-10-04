@@ -6,7 +6,7 @@ const SB_KEY = "sb_publishable_6nPNEGdhVIBnSQFF6GO4Lg_RgN8uTiy";
 const OWNER_EMAIL = "brocki.adam@gmail.com";
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 window.__sb = sb;
-const CREW_EMAIL = "ekipa@dreamgirlz-setlista.app";
+const CREW_DOMAIN = "@dreamgirlz-setlista.app";
 
 /* music is private: each file plays through a signed link valid for a few hours */
 const signed = new Map();   // assetId -> {url, exp}
@@ -173,17 +173,18 @@ function gate() {
   return new Promise(done => {
     const show = () => {
       const m = document.createElement("div"); m.className = "crew-modal crew-gate";
-      m.innerHTML = `<form class="crew-card"><h3>DREAM GIRLZ · setlista</h3><p class="hint">Wpisz hasło ekipy.</p>
+      m.innerHTML = `<form class="crew-card"><h3>DREAM GIRLZ · setlista</h3><p class="hint">Wpisz login i hasło ekipy.</p>
+        <input class="in" name="u" type="text" placeholder="Użytkownik" autocomplete="username" autocapitalize="off" spellcheck="false" required>
         <input class="in" name="p" type="password" placeholder="Hasło" autocomplete="current-password" required>
         <div class="crew-row"><button type="button" class="btn ghost" data-own>Jestem Adamem (muzyka)</button><button class="btn primary">Wejdź</button></div><p class="crew-msg"></p></form>`;
       document.body.append(m);
       const f = m.querySelector("form"), msg = m.querySelector(".crew-msg");
-      setTimeout(() => f.p.focus(), 30);
+      setTimeout(() => f.u.focus(), 30);
       m.querySelector("[data-own]").onclick = () => { ownerLogin(); };
       f.onsubmit = async e => {
         e.preventDefault(); msg.textContent = "Sprawdzam…";
-        const { data, error } = await sb.auth.signInWithPassword({ email: CREW_EMAIL, password: f.p.value });
-        if (error) { msg.textContent = "Złe hasło."; return; }
+        const { data, error } = await sb.auth.signInWithPassword({ email: f.u.value.trim().toLowerCase().replace(/[^a-z0-9._-]/g,"") + CREW_DOMAIN, password: f.p.value });
+        if (error) { msg.textContent = "Zły login lub hasło."; return; }
         session = data.session; m.remove(); done();
       };
     };
