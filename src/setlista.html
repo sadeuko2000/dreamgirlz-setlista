@@ -583,6 +583,30 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 .banner.moved{background:var(--accent);color:var(--accent-fg);font-size:15px}.banner.moved a{color:inherit;font-weight:700}
 .relink{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--spot-soft)}
 .relink .hint{flex:1 1 220px}
+.files{background:var(--surface);border-radius:var(--r);padding:8px 14px;display:flex;flex-direction:column;gap:8px}
+.files-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px}
+.files-h b{font-size:13px;letter-spacing:.02em}
+.files-h .fc{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.files-h .fc i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted)}
+.files-h .fc.ok i,.files-row.ok .fdot{background:var(--ok)}
+.files-h .fc.miss i,.files-row.miss .fdot{background:var(--bad)}
+.files-h .fc.miss{color:var(--bad)}
+.files-h .fmsg{color:var(--muted);flex:1 1 200px;min-width:0}
+.files-h .sp{flex:1}
+.files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 16px;margin:0;padding:0;list-style:none}
+.files-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:6px 8px;border-radius:8px;font-size:13px}
+.files-row:hover{background:var(--surface-2,rgba(255,255,255,.04))}
+.files-row.miss{background:rgba(240,122,108,.10)}
+.fdot{width:8px;height:8px;border-radius:50%;background:var(--muted);opacity:.7}
+.files-row.none .fdot{background:transparent;border:1px solid var(--muted)}
+.files-row .ft{min-width:0;display:flex;flex-direction:column;gap:1px;text-align:left;background:none;border:0;color:inherit;padding:0;cursor:pointer;font:inherit}
+.files-row .ft b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.files-row .ft span{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.files-row .ft span em{font-style:normal;color:var(--fg);opacity:.85}
+.files-row .fs{font-size:12px;color:var(--muted);white-space:nowrap}
+.files-row.ok .fs{color:var(--ok)}
+.files-row.miss .fs{color:var(--bad)}
+.files-row .btn{padding:3px 10px;font-size:12px}
 .tb-off{position:relative;overflow:hidden;white-space:nowrap;font-variant-numeric:tabular-nums;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 30%,transparent) var(--p,0%),transparent var(--p,0%))}
 .tb-off.ok{border-color:var(--ok,#3FB27F);color:var(--ok,#3FB27F);background:color-mix(in srgb,var(--ok,#3FB27F) 12%,transparent)}
 .tb-off.busy{border-color:var(--accent);color:var(--fg);opacity:1}
@@ -695,6 +719,8 @@ html.skin-nocny .tb-time{color:var(--fg)}
       <div class="skin-sw" role="group" aria-label="Skórka"><button data-skin="studio" aria-pressed="true" title="Skórka Studio">Studio</button><button data-skin="nocny" aria-pressed="false" title="Skórka Nocny: stonowane kolory, ostre krawędzie, Space Grotesk">Nocny</button></div>
     </div>
   </header>
+  <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
+  <input type="file" id="fileOne" accept="audio/*,.mp3,.wav,.m4a,.aif,.aiff,.flac,.ogg" hidden>
   <div id="viewSet" class="vs">
   <div class="vs-main">
   <div class="tbar" id="tbar" role="group" aria-label="Transport">
@@ -1084,48 +1110,92 @@ function updOffline(){
   if (!off.busy) offSizes();
 }
 document.getElementById("tOff").onclick=()=>offPrepare();
-/* moving to another backend: versions whose audio file is not there yet get re-uploaded from the original files, matched by file name */
-const relink = { missing:null, checking:false, busy:false, msg:"" };
+/* file status panel: which numbers have their recording in the store, which are missing, and which version is current */
+const relink = { missing:null, ok:new Set(), checking:false, busy:false, msg:"", sig:"", open:null };
+try{ relink.open = localStorage.getItem("filesOpen"); }catch{}
+let oneTarget=null;
 async function relinkCheck(){
-  if (!window.__sb || !canUpload || relink.checking) return;
-  relink.checking=true; const miss=[];
+  if (relink.checking) return;
+  relink.checking=true; const miss=[], ok=new Set(), err=new Set();
   if (window.__blobReady) { try{ await window.__blobReady(); }catch{} }
-  for (const v of versions){ if (!v.assetId) continue; try{ const r=await fetch(BLOB(v.assetId), {headers:{Range:"bytes=0-0"}}); if (r.status===400||r.status===404) miss.push(v.id); try{ r.body?.cancel(); }catch{} }catch{} }
-  relink.missing=miss; relink.checking=false; renderRelink();
+  await Promise.all(versions.filter(v=>v.assetId).map(async v=>{ try{ const r=await fetch(BLOB(v.assetId), {headers:{Range:"bytes=0-0"}}); if (r.status===400||r.status===404||r.status===403) miss.push(v.id); else if (r.ok) ok.add(v.id); else err.add(v.id); try{ r.body?.cancel(); }catch{} }catch{ err.add(v.id); } }));
+  relink.missing=miss; relink.ok=ok; relink.err=err; relink.checking=false; renderRelink();
+}
+function fileState(s){
+  const cv=currentVersion(s);
+  if (!cv || !cv.assetId) return {st:"none", cv};
+  if ((relink.missing||[]).includes(cv.id)) return {st:"miss", cv};
+  if (relink.ok.has(cv.id)) return {st:"ok", cv};
+  if (relink.err?.has(cv.id)) return {st:"err", cv};
+  return {st:"wait", cv};
 }
 function renderRelink(){
-  const box=document.getElementById("relinkBox"); if (!box) return;
-  const miss=(relink.missing||[]).map(vById).filter(Boolean);
-  box.hidden = !window.__sb || !canUpload || (!miss.length && !relink.msg);
-  if (box.hidden) return;
-  box.innerHTML = `<b>Przenieś nagrania</b><span class="hint">${relink.msg || `${miss.length} ${miss.length===1?"nagranie czeka":miss.length<5?"nagrania czekają":"nagrań czeka"} na wgranie do nowej bazy. Wskaż folder z oryginalnymi plikami (np. ___PRE FINAL VERSIONS___), a dopasuję je po nazwie.`}</span>${relink.busy?"":`<button class="btn primary" id="relinkGo">Wskaż folder</button>`}`;
-  const b=document.getElementById("relinkGo"); if (b) b.onclick=()=>document.getElementById("relinkIn").click();
+  const box=document.getElementById("filesBar"); if (!box) return;
+  const items=sorted().filter(x=>x.kind!=="break");
+  if (!items.length){ box.hidden=true; return; }
+  box.hidden=false;
+  let n=0; const rows=items.map(x=>({s:x, n:++n, ...fileState(x)}));
+  const cnt=k=>rows.filter(r=>r.st===k).length;
+  const nOk=cnt("ok"), nMiss=cnt("miss"), nNone=cnt("none"), nWait=cnt("wait");
+  const missAll=(relink.missing||[]).map(vById).filter(Boolean);
+  const open = relink.open==null ? nMiss>0 : relink.open==="1";
+  const up = canUpload && !relink.busy;
+  const head = `<div class="files-h"><b>Pliki</b>
+    <span class="fc ok"><i></i>${nOk} wgrane</span>
+    ${nMiss?`<span class="fc miss"><i></i>${nMiss} brakuje</span>`:""}
+    ${nNone?`<span class="fc"><i style="background:transparent;border:1px solid var(--muted)"></i>${nNone} bez nagrania</span>`:""}
+    ${nWait||relink.checking?`<span class="fc">sprawdzam…</span>`:""}
+    ${cnt("err")?`<span class="fc" title="Nie udało się sprawdzić: brak internetu albo serwer nie odpowiada">${cnt("err")} nie sprawdzono</span>`:""}
+    ${relink.msg?`<span class="fmsg">${esc(relink.msg)}</span>`:`<span class="sp"></span>`}
+    ${up && missAll.length?`<button class="btn primary" id="relinkGo" title="Wskaż folder z oryginalnymi plikami, brakujące dopasuję po nazwie pliku">Wgraj brakujące z folderu</button>`:""}
+    <button class="btn ghost" id="filesTog" aria-expanded="${open}">${open?"Zwiń ▴":"Pokaż listę ▾"}</button></div>`;
+  const lab = {ok:"wgrane", miss:"brak pliku", none:"bez nagrania", wait:"…", err:"nie sprawdzono"};
+  const list = !open ? "" : `<ul class="files-grid">${rows.map(r=>{
+    const nv=versions.filter(v=>v.songId===r.s.id).length;
+    const ver = r.cv ? `<em>${esc(r.cv.label||"v?")}</em>${nv>1?` z ${nv}`:""} · ${esc(r.cv.fileName||"bez nazwy pliku")}` : "brak wersji z nagraniem";
+    const btn = up && r.st==="miss" ? `<button class="btn" data-fone="${r.cv.id}">Wgraj plik</button>` : `<span class="fs">${lab[r.st]}</span>`;
+    return `<li class="files-row ${r.st}"><span class="fdot"></span><button class="ft" data-fsel="${r.s.id}" title="${esc(r.cv?.fileName||"")}"><b>${r.n}. ${esc(r.s.title||"Bez tytułu")}</b><span>${ver}</span></button>${btn}</li>`;
+  }).join("")}</ul>`;
+  box.innerHTML = head + list;
+  box.querySelector("#filesTog").onclick=()=>{ relink.open = open?"0":"1"; try{ localStorage.setItem("filesOpen", relink.open); }catch{} renderRelink(); };
+  const g=box.querySelector("#relinkGo"); if (g) g.onclick=()=>document.getElementById("relinkIn").click();
+  box.querySelectorAll("[data-fsel]").forEach(b=>b.onclick=()=>select(b.dataset.fsel));
+  box.querySelectorAll("[data-fone]").forEach(b=>b.onclick=()=>{ oneTarget=b.dataset.fone; document.getElementById("fileOne").click(); });
 }
+async function uploadInto(v, file){
+  const buf=await file.arrayBuffer();
+  const ab=await new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,48000,48000).decodeAudioData(buf.slice(0));
+  const peaks=computePeaks(ab,800); const name=file.name.toLowerCase();
+  let blob, type;
+  if (/\.(m4a|mp4|aac)$/.test(name)) { blob=file; type="video/mp4"; }
+  else { blob=await encodeOpus(ab,()=>{}); type="video/webm"; }
+  const up=await assets.upload(blob,{type});
+  const patch={assetId:up.id, peaks};
+  if (file.name!==v.fileName) patch.fileName=file.name;
+  await db.doc("versions/"+v.id).update(patch);
+}
+document.getElementById("fileOne").addEventListener("change", async e=>{
+  const file=e.target.files?.[0]; e.target.value=""; const v=vById(oneTarget); oneTarget=null;
+  if (!file || !v || relink.busy) return;
+  relink.busy=true; relink.msg=`Wgrywam ${file.name}…`; renderRelink();
+  try{ await uploadInto(v, file); relink.msg=`Wgrano ${file.name}.`; }catch(err){ relink.msg=`Nie udało się wgrać ${file.name}.`; }
+  relink.busy=false; relinkCheck();
+});
 document.getElementById("relinkIn").addEventListener("change", async e=>{
   const files=new Map([...(e.target.files||[])].map(f=>[f.name, f])); e.target.value="";
   const miss=(relink.missing||[]).map(vById).filter(Boolean);
   const todo=miss.filter(v=>v.fileName && files.has(v.fileName));
   relink.busy=true; let done=0, failed=[];
   for (const v of todo){
-    relink.msg=`Wgrywam ${done+1}/${todo.length}: ${v.fileName}…`; renderRelink();
-    try{
-      const file=files.get(v.fileName), buf=await file.arrayBuffer();
-      const ab=await new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,48000,48000).decodeAudioData(buf.slice(0));
-      const peaks=computePeaks(ab,800); const name=file.name.toLowerCase();
-      let blob, type;
-      if (/\.(m4a|mp4|aac)$/.test(name)) { blob=file; type="video/mp4"; }
-      else { blob=await encodeOpus(ab,()=>{}); type="video/webm"; }
-      const up=await assets.upload(blob,{type});
-      await db.doc("versions/"+v.id).update({assetId:up.id, peaks});
-      done++;
-    }catch(err){ failed.push(v.fileName); }
+    relink.msg=`Wgrywam ${done+failed.length+1}/${todo.length}: ${v.fileName}…`; renderRelink();
+    try{ await uploadInto(v, files.get(v.fileName)); done++; }catch(err){ failed.push(v.fileName); }
   }
   relink.busy=false;
   const left=miss.filter(v=>!todo.includes(v)).map(v=>v.fileName||v.label);
-  relink.msg = `Wgrano ${done} z ${miss.length}.` + (failed.length?` Nie udało się: ${failed.join(", ")}.`:"") + (left.length?` Brak w folderze: ${left.join(", ")}.`:"");
+  relink.msg = `Wgrano ${done} z ${miss.length}.` + (failed.length?` Nie udało się: ${failed.join(", ")}.`:"") + (left.length?` Nie ma w folderze: ${left.join(", ")}.`:"");
   relinkCheck();
 });
-function renderStats(){ updOffline(); if (relink.n!==versions.length && !relink.busy){ relink.n=versions.length; relinkCheck(); } else renderRelink();
+function renderStats(){ updOffline(); const sig=versions.map(v=>v.id+":"+(v.assetId||"")).join(","); if (relink.sig!==sig && !relink.busy){ relink.sig=sig; relinkCheck(); } else renderRelink();
   const items = sorted();
   const ss = items.filter(s=>s.kind!=="break");
   $("#stShow").textContent = fmt(items.reduce((a,s)=>a+itemLen(s),0));

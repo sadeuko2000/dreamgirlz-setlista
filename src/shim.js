@@ -122,13 +122,13 @@ const dbApi = {
 
 /* ---------- who is editing ---------- */
 let session = null;
-const isOwner = () => (session?.user?.email || "").toLowerCase() === OWNER_EMAIL;
+const isOwner = () => !!session;   // one shared login: everyone signed in has full rights
 let localId = null; try { localId = localStorage.getItem("crewId"); if (!localId) { localId = "c_" + rid(); localStorage.setItem("crewId", localId); } } catch { localId = "c_" + rid(); }
-const myId = () => isOwner() ? "owner" : localId;
+const myId = () => "ekipa";
 const myName = () => "Ekipa";
 const userApi = {
   id: async () => myId(),
-  me: async () => ({ id: myId(), name: isOwner() ? "Adam" : myName() }),
+  me: async () => ({ id: myId(), name: myName() }),
   can: async () => true,
   isOwner: () => isOwner(),
   canEdit: () => true,
@@ -136,7 +136,7 @@ const userApi = {
     await load("people");
     const out = {}; const ppl = cache.get("people");
     for (const id of ids) {
-      if (id === myId()) { out[id] = { id, name: isOwner() ? "Adam" : (myName() || "Ty"), isMe: true }; continue; }
+      if (id === myId()) { out[id] = { id, name: myName(), isMe: true }; continue; }
       const p = ppl.get(id); out[id] = { id, name: p?.name || (id === "owner" ? "Adam" : ""), isMe: false };
     }
     return out;
@@ -167,9 +167,8 @@ const downloadsApi = {
 const ready = sb.auth.getSession().then(async r => {
   session = r.data.session;
   if (!session) await gate();
-  document.documentElement.classList.toggle("crew-guest", !isOwner());
 });
-const loginEmail = u => { u = u.trim().toLowerCase(); if (u.includes("@")) return u; u = u.replace(/[^a-z0-9._-]/g, ""); return u === "adam" ? OWNER_EMAIL : u + CREW_DOMAIN; };
+const loginEmail = u => { u = u.trim().toLowerCase(); if (u.includes("@")) return u; u = u.replace(/[^a-z0-9._-]/g, ""); return u + CREW_DOMAIN; };
 function gate() {
   return new Promise(done => {
     const show = () => {
@@ -191,7 +190,7 @@ function gate() {
     if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
   });
 }
-sb.auth.onAuthStateChange((ev, s) => { const was = isOwner(); session = s; if (isOwner() !== was || ev === "SIGNED_OUT") location.reload(); });
+sb.auth.onAuthStateChange((ev, s) => { session = s; if (ev === "SIGNED_OUT") location.reload(); });
 
 window.claude = {
   use: async name => {
@@ -216,7 +215,7 @@ function ui() {
     box.innerHTML = "";
     box.append(live);
     const who = document.createElement("button"); who.className = "crew-btn ghost";
-    who.textContent = isOwner() ? "Adam · wyloguj" : "Wyloguj"; who.title = isOwner() ? "Zalogowany jako Adam: możesz wgrywać muzykę i trwale usuwać" : "Wyloguj z setlisty";
+    who.textContent = "Wyloguj"; who.title = "Wyloguj z setlisty";
     who.onclick = async () => { await sb.auth.signOut(); };
     box.append(who);
   };
@@ -233,7 +232,7 @@ function modal(html, onOk) {
 const css = document.createElement("style");
 css.textContent = `.crew-box{display:flex;align-items:center;gap:6px}.crew-live{width:8px;height:8px;border-radius:50%;background:var(--warn,#E3A04C)}.crew-live.ok{background:var(--ok,#6CC08B)}
 .crew-btn{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap}.crew-btn.ghost{color:var(--muted)}.crew-btn:hover{border-color:var(--muted)}
-html.crew-guest #askDelS,html.crew-guest [data-askdelv]{display:none!important}
+
 .crew-modal.crew-gate{background:var(--bg,#1C1D20)}
 .crew-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}.crew-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,8px);padding:20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:10px}.crew-card h3{margin:0;font-size:18px}.crew-card p{margin:0}.crew-row{display:flex;justify-content:flex-end;gap:8px}.crew-msg{font-size:13px;color:var(--warn,#E3A04C)}`;
 document.head.append(css);
