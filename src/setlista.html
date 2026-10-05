@@ -702,9 +702,9 @@ html.skin-nocny .item[aria-current="true"]{background:var(--fg);color:var(--bg)}
 html.skin-nocny .item[aria-current="true"] .c,html.skin-nocny .item[aria-current="true"] .no,html.skin-nocny .item[aria-current="true"] .t .ico{color:#55575D}
 html.skin-nocny .tb-time{color:var(--fg)}
 
-/* type texture: same actress colour, the pattern says what kind of number it is (piosenka plain, poezja lines, performance diagonals, scenka dots) */
-:root{--tx-poezja:repeating-linear-gradient(0deg,rgba(0,0,0,.20) 0 1.5px,transparent 1.5px 8px);--tx-performance:repeating-linear-gradient(135deg,rgba(0,0,0,.18) 0 5px,transparent 5px 12px);--tx-scenka:radial-gradient(rgba(0,0,0,.30) 1.6px,transparent 2.1px) 0 0/9px 9px;
-  --txl-poezja:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 7px);--txl-performance:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 4px,transparent 4px 11px);--txl-scenka:radial-gradient(rgba(255,255,255,.12) 1.2px,transparent 1.7px) 0 0/8px 8px}
+/* type texture: same actress colour, the pattern says what kind of number it is (piosenka plain, poezja diagonals one way, performance the other way, scenka dots) */
+:root{--tx-poezja:repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0 5px,transparent 5px 12px);--tx-performance:repeating-linear-gradient(135deg,rgba(0,0,0,.18) 0 5px,transparent 5px 12px);--tx-scenka:radial-gradient(rgba(0,0,0,.30) 1.6px,transparent 2.1px) 0 0/9px 9px;
+  --txl-poezja:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 4px,transparent 4px 11px);--txl-performance:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 4px,transparent 4px 11px);--txl-scenka:radial-gradient(rgba(255,255,255,.12) 1.2px,transparent 1.7px) 0 0/8px 8px}
 .blk.one[data-type=poezja]{background:var(--tx-poezja),var(--c)}
 .blk.one[data-type=performance]{background:var(--tx-performance),var(--c)}
 .blk.one[data-type=scenka]{background:var(--tx-scenka),var(--c)}
