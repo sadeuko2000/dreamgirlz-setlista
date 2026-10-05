@@ -276,6 +276,10 @@ tr:last-child td{border-bottom:0}
 .blk .btop .bstop{flex:none;color:#F1F2F4;font-size:11px}
 .blk .bstopbar{position:absolute;right:0;top:0;bottom:0;width:5px;background:#F1F2F4;box-shadow:-1px 0 0 rgba(0,0,0,.5);z-index:4;pointer-events:none}
 .blk .bstopbar.off{opacity:.3}
+.blk .bopen{position:absolute;right:0;top:26px;bottom:0;width:14px;background:repeating-linear-gradient(90deg,rgba(0,0,0,.35) 0 2px,transparent 2px 5px);z-index:4;pointer-events:none}
+.tl-over{position:absolute;top:0;height:100%;min-width:64px;border:1px dashed var(--accent);border-left:2px solid var(--accent);border-radius:0 6px 6px 0;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 22%,transparent) 0 6px,color-mix(in srgb,var(--accent) 8%,transparent) 6px 12px);color:var(--fg);font-family:var(--f-mono);font-size:13px;font-weight:600;display:flex;align-items:flex-start;padding:30px 8px 0;white-space:nowrap;z-index:5;pointer-events:none;animation:overPulse 1.6s ease-in-out infinite}
+@keyframes overPulse{50%{border-color:color-mix(in srgb,var(--accent) 40%,transparent)}}
+.tb-time .over{color:var(--fg);margin-left:6px;font-size:.8em}
 .blk .ps{top:26px;height:calc(100% - 30px)}
 .blk.brk .btop{background:transparent}
 .blk.brk .btop .bt{color:var(--muted);font-weight:500;font-style:italic}
@@ -649,6 +653,7 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .gobtn b{flex:0 1 auto;min-width:0;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gobtn .go-sub{margin-left:auto;flex:none;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .gobtn.fading{border-color:var(--fg)}
+.gobtn.over{border-width:2px;animation:overPulse 1.6s ease-in-out infinite}
 .gobtn.fading .go-sub{color:var(--fg)}
 .gobtn:disabled{opacity:.45;cursor:default;border-color:var(--line)}
 .go-fade{flex:none;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 6px}
@@ -1307,7 +1312,7 @@ function renderTimeline(){
     const fill = pale ? (acts.length===1 ? paleMix(acts[0]) : `linear-gradient(90deg,${acts.map((k,j)=>`${paleMix(k)} ${j/acts.length*100}% ${(j+1)/acts.length*100}%`).join(",")})`) : "";
     return `<button class="blk${isBreak?" brk":""}${acts.length===1&&!hasParts&&!pale?" one":""}${hasParts?" parts":""}${pale?" pale":""}${L.real?"":" nolen"}${s.id===selId?" sel":""}${dim?" dim":""}" data-id="${s.id}" data-type="${isBreak?"break":stype(s)}"
       style="left:calc(${left}% + 1px);width:calc(${width}% - 2px);${cvar}${bar?`--bar:${bar};`:""}${pale?`--fill:${fill};`:""}" title="${esc(typeName(stype(s)))} · ${esc((isBreak?"":n+". ")+(s.title||""))}${cvf?" · plik: "+esc(cvf):""} · ${L.real?fmt(L.real):"brak nagrania"}">
-      ${waveSvg}${ps}${pt}${!isBreak&&s.after==="stop"?`<span class="bstopbar${honorStops?"":" off"}"></span>`:""}<span class="btop"><span class="bn">${icon(stype(s))}${isBreak?"":n}${isBreak?"":`<span class="dot s-${esc(s.status||"szkic")}"></span>`}</span><span class="bt">${esc(s.title||"Bez tytułu")}</span>${!isBreak&&s.after==="stop"?`<span class="bstop" title="Po tym numerze playhead się zatrzymuje">⏸</span>`:""}<span class="bd">${L.real?fmt(L.real):"—"}</span></span>${isBreak?"":(cvf?`<span class="bf" title="${esc(cvf)}">${esc(cvf)}</span>`:`<span class="bf none">brak pliku</span>`)}</button>`;
+      ${waveSvg}${ps}${pt}${!isBreak&&s.after==="stop"?`<span class="bstopbar${honorStops?"":" off"}"></span>`:""}${!isBreak&&s.after==="open"?`<span class="bopen"></span>`:""}<span class="btop"><span class="bn">${icon(stype(s))}${isBreak?"":n}${isBreak?"":`<span class="dot s-${esc(s.status||"szkic")}"></span>`}</span><span class="bt">${esc(s.title||"Bez tytułu")}</span>${!isBreak&&s.after==="stop"?`<span class="bstop" title="Po tym numerze playhead się zatrzymuje">⏸</span>`:""}${!isBreak&&s.after==="open"?`<span class="bstop" title="Otwarty koniec: muzyka gra dalej, aż naciśniesz „Przejdź do”">∞</span>`:""}<span class="bd">${L.real?fmt(L.real):"—"}</span></span>${isBreak?"":(cvf?`<span class="bf" title="${esc(cvf)}">${esc(cvf)}</span>`:`<span class="bf none">brak pliku</span>`)}</button>`;
   }).join("");
   // hide labels on blocks too narrow to hold them
   requestAnimationFrame(()=>track.querySelectorAll(".blk").forEach(b=>{ b.classList.toggle("tiny", b.clientWidth<46); b.classList.toggle("narrow", b.clientWidth<140); }));
@@ -1647,7 +1652,7 @@ function renderDetail(){
           <div class="seg" role="group" aria-label="Status">${STATUSES.map(([k,l])=>`<button data-st="${k}" aria-pressed="${(s.status||"szkic")===k}" ${ro?"disabled":""}><span class="dot s-${k}"></span>${l}</button>`).join("")}</div>
         </div>
         <div class="field" style="flex:0 0 auto"><span class="lbl">Po zakończeniu</span>
-          <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button></div>
+          <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"&&s.after!=="open"}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button><button data-after="open" aria-pressed="${s.after==="open"}" ${ro?"disabled":""} title="Ambient: po końcu klipu muzyka gra dalej (w pętli), aż naciśniesz „Przejdź do”">∞ Gra dalej</button></div>
         </div>
       </div>
       <div class="sig-ed">
@@ -1851,7 +1856,7 @@ function wireDetail(s){
   const d=detailEl; const ref=()=>db.doc("songs/"+s.id);
   const on=(sel,ev,fn)=>{ const el=d.querySelector(sel); if(el) el.addEventListener(ev,fn); };
   on("#fTitle","change",e=>safeWrite(()=>ref().update({title:e.target.value.trim()||"Bez tytułu"})));
-  d.querySelectorAll("[data-after]").forEach(b=>b.onclick=()=>safeWrite(()=>ref().update({after: b.dataset.after==="stop" ? "stop" : ""})));
+  d.querySelectorAll("[data-after]").forEach(b=>b.onclick=()=>safeWrite(()=>ref().update({after: b.dataset.after==="go" ? "" : b.dataset.after})));
   on("#fSig","change",e=>safeWrite(()=>ref().update({cueLine:e.target.value.trim()})));
   d.querySelectorAll("[data-sigby]").forEach(b=>b.onclick=()=>{ const k=b.dataset.sigby; safeWrite(()=>ref().update({cueBy: s.cueBy===k ? "" : k})); });
   const saveCast = (acts, others) => safeWrite(()=>ref().update({cast:[...ACT.filter(a=>acts.includes(a[0])).map(a=>a[1]), ...others].join(", ")}));
@@ -2071,6 +2076,7 @@ function playAudioAt(asset, vid, at){
   else if (audio.readyState>=1) go(); else audio.addEventListener("loadedmetadata", go, {once:true});
 }
 function trRun(T){
+  tr.over=null;
   computeLayout();
   if (T>=layoutTotal-0.001){ trStop(); return; }          // end of the show: stop like pressing Stop
   const loc=locate(T); if (!loc){ trStop(); return; }
@@ -2083,7 +2089,16 @@ function trRun(T){
 }
 /* follow action: a number marked "stop" parks the playhead at the start of the next one and waits for Play */
 function holdsAfter(L){ if (stopMode==="off" || tr.loop) return false; if (L.start+L.len >= layoutTotal-0.01) return false; if (stopMode==="all") return true; const s=songs.find(x=>x.id===L.id); return !!s && s.after==="stop"; }
+/* open end (ambient): at the end of the clip the music keeps going (looping the file) until "Przejdź do" */
+function opensAfter(L){ if (tr.loop) return false; const s=songs.find(x=>x.id===L.id); return !!s && s.after==="open"; }
+function enterOver(L){
+  tr.over={L, t0:performance.now()}; tr.T=L.start+L.len-0.001;
+  if (tr.seg?.type!=="audio") internalPause();          // the clip ended in silence: stay silent
+  updTransportUI(true);
+}
+function overLoop(){ const L=tr.over?.L; if (!L || !L.vid) return; const cv=vById(L.vid); try{ audio.currentTime = cv ? vIn(cv) : 0; }catch{} audio.play().catch(()=>{}); }
 function advance(T, L){
+  if (T >= L.start+L.len-0.002 && opensAfter(L)){ enterOver(L); return; }
   if (T >= L.start+L.len-0.002 && holdsAfter(L)){
     const at=L.start+L.len; tr.playing=false; internalPause(); cancelAnimationFrame(tr.raf);
     tr.marker=at; tr.T=at; tr.stoppedAt=null; tr.held=true; saveTransport(); updTransportUI(true); return;
@@ -2093,6 +2108,7 @@ function advance(T, L){
 function step(){
   if (!tr.playing) return;
   if (tr.solo){ if (audio.ended) stopSolo(); return; }
+  if (tr.over){ if (tr.seg?.type==="audio" && audio.ended) overLoop(); return; }
   const g=tr.seg, L=tr.L; if (!g||!L) return;
   if (g.type==="audio"){
     if (audio.dataset.vid!==L.vid || audio.seeking || audio.readyState<2) return;
@@ -2114,7 +2130,7 @@ function setPartLoop(s, i){
 function clearLoop(){ tr.loop=null; renderAll(); }
 function frame(){ step(); loopCheck(); updTransportUI(); if (tr.playing) tr.raf=requestAnimationFrame(frame); }
 audio.addEventListener("timeupdate", ()=>{ step(); loopCheck(); });          // keeps going when the tab is in the background
-audio.addEventListener("ended", step);
+audio.addEventListener("ended", ()=>{ if (tr.over && tr.playing) overLoop(); else step(); });
 audio.addEventListener("pause", ()=>{ if (internal) return; if (tr.solo) stopSolo(); else if (tr.playing && tr.seg?.type==="audio" && !audio.ended) trStop(); });
 setInterval(()=>{ if (tr.playing && document.hidden) step(); }, 250);
 
@@ -2127,14 +2143,14 @@ function trPlay(from){
 }
 function trStop(){
   if (tr.solo){ stopSolo(); return; }
-  if (tr.playing){ tr.stoppedAt=tr.T; tr.playing=false; internalPause(); cancelAnimationFrame(tr.raf); tr.T=tr.marker; }
+  if (tr.playing){ tr.stoppedAt=tr.T; tr.playing=false; tr.over=null; internalPause(); cancelAnimationFrame(tr.raf); tr.T=tr.marker; }
   else { tr.marker=0; tr.T=0; }                         // second Stop: back to the very beginning
   saveTransport(); updTransportUI(true);
 }
 function trSetPos(T){
   computeLayout();
   T=Math.max(0, Math.min(T, Math.max(0,layoutTotal-0.01)));
-  tr.marker=T; tr.held=false; if (tr.playing && !tr.solo) trRun(T); else tr.T=T;
+  tr.marker=T; tr.held=false; tr.over=null; if (tr.playing && !tr.solo) trRun(T); else tr.T=T;
   saveTransport(); updTransportUI(true);
 }
 function clickClip(id){ trSetPos(blockStart(id)); select(id); }
@@ -2218,12 +2234,14 @@ function updGo(force){
   if (!layout.length){ bar.hidden=true; return; } bar.hidden=false;
   const tg=goTarget(); let n=0, num=0; if (tg){ for (const L of layout){ const x=songs.find(q=>q.id===L.id); if (x && x.kind!=="break") n++; if (L.id===tg.L.id){ num=n; break; } } }
   const fading = tails.length>0;
-  const key=(tg?tg.L.id+(tg.s.title||""):"-")+"|"+xfade+"|"+tr.playing+"|"+fading;
+  const over = tr.over && tr.playing ? Math.floor((performance.now()-tr.over.t0)/1000) : -1;
+  const key=(tg?tg.L.id+(tg.s.title||""):"-")+"|"+xfade+"|"+tr.playing+"|"+fading+"|"+over;
   if (!force && key===goKey) return; goKey=key;
   const b=document.getElementById("goNext"); b.disabled=!tg;
   b.querySelector(".go-k").textContent = tr.playing ? "▶▶ Przejdź do" : "▶ Start";
   document.getElementById("goName").innerHTML = tg ? `${icon(stype(tg.s))} ${num}. ${esc(tg.s.title||"Bez tytułu")}` : "Nie ma już kolejnych numerów";
-  document.getElementById("goSub").textContent = fading ? "wyciszam poprzedni…" : tr.playing ? `obecny wycisza się ${xfade} s · klawisz N` : "klawisz N";
+  document.getElementById("goSub").textContent = fading ? "wyciszam poprzedni…" : over>=0 ? `∞ ambient gra dalej +${fmt(over)} · klawisz N` : tr.playing ? `obecny wycisza się ${xfade} s · klawisz N` : "klawisz N";
+  b.classList.toggle("over", over>=0);
   bar.querySelectorAll("[data-xf]").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.xf===xfade)));
 }
 document.getElementById("goNext").onclick=()=>goNext();
@@ -2239,7 +2257,12 @@ function updTransportUI(full){
   if (!layout.length) computeLayout();
   const total=layoutTotal||1, loc=locate(Math.min(tr.T, Math.max(0,total-0.001)));
   const pb=$("#tPlay"); if (pb) pb.classList.toggle("on", tr.playing && !tr.solo);
-  $("#tTime").textContent = fmtPrec(tr.T);
+  const ov = tr.over && tr.playing ? (performance.now()-tr.over.t0)/1000 : 0;
+  if (tr.over && tr.playing) $("#tTime").innerHTML = `${fmtPrec(tr.T)}<span class="over">+${fmt(Math.floor(ov))}</span>`; else $("#tTime").textContent = fmtPrec(tr.T);
+  { let o=document.getElementById("tlOver"); const trk=document.getElementById("tlTrack");
+    if (tr.over && tr.playing && trk){ if (!o){ o=document.createElement("div"); o.id="tlOver"; o.className="tl-over"; trk.append(o); }
+      const end=(tr.over.L.start+tr.over.L.len)/total*100; o.style.left=`calc(${end}% - 1px)`; o.style.width=`max(64px, ${Math.min(ov,60)/total*100}%)`; o.textContent=`∞ +${fmt(Math.floor(ov))}`; }
+    else if (o) o.remove(); }
   if (loc){
     const s=songs.find(x=>x.id===loc.L.id);
     if (full || loc.i!==lastIdxUI){
