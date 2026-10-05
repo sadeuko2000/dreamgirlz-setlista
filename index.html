@@ -1227,6 +1227,9 @@ let mobileOpen = false;
 /* ---------- derived ---------- */
 const sorted = () => songs.filter(x=>!x.archived).sort((a,b)=>(a.order??0)-(b.order??0));
 const vById = id => versions.find(v=>v.id===id);
+/* open end only for numbers without a fixed form: scenka, poezja, performance (a song has its own length) */
+const canOpen = s => !!s && s.kind!=="break" && stype(s)!=="piosenka";
+const isOpen = s => canOpen(s) && s.after==="open";
 const songVersions = sid => versions.filter(v=>v.songId===sid).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
 const currentVersion = s => vById(s.currentVersion) || songVersions(s.id)[0] || null;
 const songMarkers = sid => markers.filter(m=>m.songId===sid).sort((a,b)=>a.t-b.t);
@@ -1561,7 +1564,7 @@ function renderTimeline(){
     const fill = pale ? (acts.length===1 ? paleMix(acts[0]) : `linear-gradient(90deg,${acts.map((k,j)=>`${paleMix(k)} ${j/acts.length*100}% ${(j+1)/acts.length*100}%`).join(",")})`) : "";
     return `<button class="blk${isBreak?" brk":""}${acts.length===1&&!hasParts&&!pale?" one":""}${hasParts?" parts":""}${pale?" pale":""}${L.real?"":" nolen"}${s.id===selId?" sel":""}${dim?" dim":""}" data-id="${s.id}" data-type="${isBreak?"break":stype(s)}"
       style="left:calc(${left}% + 1px);width:calc(${width}% - 2px);${cvar}${bar?`--bar:${bar};`:""}${pale?`--fill:${fill};`:""}" title="${esc(typeName(stype(s)))} · ${esc((isBreak?"":n+". ")+(s.title||""))}${cvf?" · plik: "+esc(cvf):""} · ${L.real?fmt(L.real):"brak nagrania"}">
-      ${waveSvg}${ps}${pt}${!isBreak&&s.after==="stop"?`<span class="bstopbar${honorStops?"":" off"}"></span>`:""}${!isBreak&&s.after==="open"?`<span class="bopen"></span>`:""}<span class="btop"><span class="bn">${icon(stype(s))}${isBreak?"":n}${isBreak?"":`<span class="dot s-${esc(s.status||"szkic")}"></span>`}</span><span class="bt">${esc(s.title||"Bez tytułu")}</span>${!isBreak&&s.after==="stop"?`<span class="bstop" title="Po tym numerze playhead się zatrzymuje">⏸</span>`:""}${!isBreak&&s.after==="open"?`<span class="bstop" title="Otwarty koniec: muzyka gra dalej, aż naciśniesz „Przejdź do”">∞</span>`:""}<span class="bd">${L.real?fmt(L.real):"—"}</span></span>${isBreak?"":(cvf?`<span class="bf" title="${esc(cvf)}">${esc(cvf)}</span>`:`<span class="bf none">brak pliku</span>`)}</button>`;
+      ${waveSvg}${ps}${pt}${!isBreak&&s.after==="stop"?`<span class="bstopbar${honorStops?"":" off"}"></span>`:""}${!isBreak&&isOpen(s)?`<span class="bopen"></span>`:""}<span class="btop"><span class="bn">${icon(stype(s))}${isBreak?"":n}${isBreak?"":`<span class="dot s-${esc(s.status||"szkic")}"></span>`}</span><span class="bt">${esc(s.title||"Bez tytułu")}</span>${!isBreak&&s.after==="stop"?`<span class="bstop" title="Po tym numerze playhead się zatrzymuje">⏸</span>`:""}${!isBreak&&isOpen(s)?`<span class="bstop" title="Otwarty koniec: muzyka gra dalej, aż naciśniesz „Przejdź do”">∞</span>`:""}<span class="bd">${L.real?fmt(L.real):"—"}</span></span>${isBreak?"":(cvf?`<span class="bf" title="${esc(cvf)}">${esc(cvf)}</span>`:`<span class="bf none">brak pliku</span>`)}</button>`;
   }).join("");
   // hide labels on blocks too narrow to hold them
   requestAnimationFrame(()=>track.querySelectorAll(".blk").forEach(b=>{ b.classList.toggle("tiny", b.clientWidth<46); b.classList.toggle("narrow", b.clientWidth<140); }));
@@ -1901,7 +1904,7 @@ function renderDetail(){
           <div class="seg" role="group" aria-label="Status">${STATUSES.map(([k,l])=>`<button data-st="${k}" aria-pressed="${(s.status||"szkic")===k}" ${ro?"disabled":""}><span class="dot s-${k}"></span>${l}</button>`).join("")}</div>
         </div>
         <div class="field" style="flex:0 0 auto"><span class="lbl">Po zakończeniu</span>
-          <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"&&s.after!=="open"}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button><button data-after="open" aria-pressed="${s.after==="open"}" ${ro?"disabled":""} title="Otwarty koniec: po końcu klipu numer trwa dalej (ambient gra w pętli, scena bez muzyki po prostu trwa), aż naciśniesz „Przejdź do”">∞ Otwarty koniec</button></div>
+          <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"&&!isOpen(s)}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button>${canOpen(s)?`<button data-after="open" aria-pressed="${s.after==="open"}" ${ro?"disabled":""} title="Otwarty koniec: po końcu klipu numer trwa dalej (ambient gra w pętli, scena bez muzyki po prostu trwa), aż naciśniesz „Przejdź do”">∞ Otwarty koniec</button>`:""}</div>
         </div>
       </div>
       <div class="sig-ed">
@@ -2339,7 +2342,7 @@ function trRun(T){
 /* follow action: a number marked "stop" parks the playhead at the start of the next one and waits for Play */
 function holdsAfter(L){ if (stopMode==="off" || tr.loop) return false; if (L.start+L.len >= layoutTotal-0.01) return false; if (stopMode==="all") return true; const s=songs.find(x=>x.id===L.id); return !!s && s.after==="stop"; }
 /* open end (ambient): at the end of the clip the music keeps going (looping the file) until "Przejdź do" */
-function opensAfter(L){ if (tr.loop) return false; const s=songs.find(x=>x.id===L.id); return !!s && s.after==="open"; }
+function opensAfter(L){ if (tr.loop) return false; const s=songs.find(x=>x.id===L.id); return !!s && isOpen(s); }
 function enterOver(L){
   tr.over={L, t0:performance.now()}; tr.T=L.start+L.len-0.001;
   if (tr.seg?.type!=="audio") internalPause();          // the clip ended in silence: stay silent
