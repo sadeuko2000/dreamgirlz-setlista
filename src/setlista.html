@@ -1652,7 +1652,7 @@ function renderDetail(){
           <div class="seg" role="group" aria-label="Status">${STATUSES.map(([k,l])=>`<button data-st="${k}" aria-pressed="${(s.status||"szkic")===k}" ${ro?"disabled":""}><span class="dot s-${k}"></span>${l}</button>`).join("")}</div>
         </div>
         <div class="field" style="flex:0 0 auto"><span class="lbl">Po zakończeniu</span>
-          <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"&&s.after!=="open"}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button><button data-after="open" aria-pressed="${s.after==="open"}" ${ro?"disabled":""} title="Ambient: po końcu klipu muzyka gra dalej (w pętli), aż naciśniesz „Przejdź do”">∞ Gra dalej</button></div>
+          <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"&&s.after!=="open"}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button><button data-after="open" aria-pressed="${s.after==="open"}" ${ro?"disabled":""} title="Otwarty koniec: po końcu klipu numer trwa dalej (ambient gra w pętli, scena bez muzyki po prostu trwa), aż naciśniesz „Przejdź do”">∞ Otwarty koniec</button></div>
         </div>
       </div>
       <div class="sig-ed">
@@ -2240,7 +2240,7 @@ function updGo(force){
   const b=document.getElementById("goNext"); b.disabled=!tg;
   b.querySelector(".go-k").textContent = tr.playing ? "▶▶ Przejdź do" : "▶ Start";
   document.getElementById("goName").innerHTML = tg ? `${icon(stype(tg.s))} ${num}. ${esc(tg.s.title||"Bez tytułu")}` : "Nie ma już kolejnych numerów";
-  document.getElementById("goSub").textContent = fading ? "wyciszam poprzedni…" : over>=0 ? `∞ ambient gra dalej +${fmt(over)} · klawisz N` : tr.playing ? `obecny wycisza się ${xfade} s · klawisz N` : "klawisz N";
+  document.getElementById("goSub").textContent = fading ? "wyciszam poprzedni…" : over>=0 ? `∞ ${tr.seg?.type==="audio"?"ambient gra dalej":"numer trwa dalej"} +${fmt(over)} · klawisz N` : tr.playing ? `obecny wycisza się ${xfade} s · klawisz N` : "klawisz N";
   b.classList.toggle("over", over>=0);
   bar.querySelectorAll("[data-xf]").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.xf===xfade)));
 }
