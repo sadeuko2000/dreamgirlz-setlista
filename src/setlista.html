@@ -312,7 +312,7 @@ html.skin-nocny{--hd:#050506}
 .trim-f .in{width:86px;padding:5px 8px}
 .trim .btn{padding:5px 10px;font-size:13px}
 /* prompter (lyrics for the cast) */
-#viewSet{display:grid;grid-template-columns:minmax(0,1fr) var(--pw,34%);gap:18px;align-items:start}
+#viewSet{display:grid;grid-template-columns:minmax(0,1fr) var(--pw,minmax(0,1fr));gap:18px;align-items:start}
 #viewSet.p-collapsed{--pw:44px}
 #viewSet[hidden],.prompter [hidden]{display:none!important}
 .vs-main{display:flex;flex-direction:column;gap:18px;min-width:0}
@@ -645,7 +645,10 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 /* cue-line strip: the spoken line that starts the next number */
 .sigbar{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-height:58px;box-sizing:border-box;min-width:0}
 .sigbar:empty{display:none}
-.gobar{display:flex;gap:8px;align-items:stretch;min-width:0}
+.gobar{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;min-width:0}
+.gobar>.gobtn{flex:1 1 360px}
+.gobar>.gohold{flex:1 0 auto;min-height:52px}
+.gobar>.go-fade{min-height:44px}
 .gobtn{flex:1;min-width:0;position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;height:52px;padding:0 18px;border-radius:var(--r);border:1px solid var(--accent);background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 38%,var(--surface)) var(--gp,0%),color-mix(in srgb,var(--accent) 12%,var(--surface)) var(--gp,0%));color:var(--fg);font:inherit;text-align:left}
 .gobtn:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 38%,var(--surface)) var(--gp,0%),color-mix(in srgb,var(--accent) 22%,var(--surface)) var(--gp,0%))}
 .gobtn:active{transform:translateY(1px)}
