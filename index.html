@@ -655,14 +655,21 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .gobtn:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 38%,var(--surface)) var(--gp,0%),color-mix(in srgb,var(--accent) 22%,var(--surface)) var(--gp,0%))}
 .gobtn:active{transform:translateY(1px)}
 .gobtn .go-k{flex:none;font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
-.gobtn b{flex:0 1 auto;min-width:0;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gobtn .go-sub{margin-left:auto;flex:none;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.gobtn{gap:12px;padding:0 14px}
+.gobtn b{flex:0 0 auto;max-width:60%;min-width:0;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gobtn .go-sub{margin-left:auto;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .gobtn.fading{border-color:var(--fg)}
 .gobtn.over{border-width:2px;animation:overPulse 1.6s ease-in-out infinite}
 .gobtn.fading .go-sub{color:var(--fg)}
 .gobtn:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.gohold{flex:none;display:flex;flex-direction:column;justify-content:center;gap:1px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.gohold b{font-size:14px;font-weight:600;white-space:nowrap}
+.gohold span{font-family:var(--f-mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.gohold:not(:disabled):hover{border-color:var(--muted)}
+.gohold:disabled{opacity:.4;cursor:default}
 .go-fade{flex:none;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 6px}
 .go-fade .lbl{margin-right:6px;font-size:10px}
+.go-div{width:1px;align-self:stretch;margin:8px 4px;background:var(--line)}
 .go-fade button{border:0;background:transparent;color:var(--muted);padding:6px 8px;border-radius:6px;font-family:var(--f-mono);font-size:12px}
 .go-fade button[data-xm]{font-family:var(--f-body);font-size:12px}
 .go-fade button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
@@ -796,8 +803,8 @@ html.skin-nocny .tb-time{color:var(--fg)}
   </section>
   <div class="gobar" id="goBar" hidden>
     <button class="gobtn" id="goNext" title="Przejście do następnego numeru: obecny wycisza się, następny startuje od razu (klawisz N)"><span class="go-k">▶▶ Przejdź do</span><b id="goName">—</b><span class="go-sub" id="goSub"></span></button>
-    <div class="go-fade" role="group" aria-label="Rodzaj przejścia"><span class="lbl">Przejście</span><button data-xm="dj" title="Jak fader DJ-ski: poprzedni cichnie, a następny w tym samym czasie się pojawia">✕ Crossfade</button><button data-xm="out" title="Poprzedni cichnie, następny startuje od razu w pełnej głośności">↘ Wycisz</button></div>
-    <div class="go-fade" role="group" aria-label="Długość przejścia"><span class="lbl">Czas</span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button></div>
+    <button class="gohold" id="goHold" title="Obecny utwór wycisza się, playhead staje na początku następnego numeru i czeka, aż go odpalisz"><b>↘ Wycisz i czekaj</b><span id="goHoldSub"></span></button>
+    <div class="go-fade" role="group" aria-label="Rodzaj i czas przejścia"><button data-xm="dj" title="Jak fader DJ-ski: poprzedni cichnie, a następny w tym samym czasie się pojawia">✕ Crossfade</button><button data-xm="out" title="Poprzedni cichnie, następny startuje od razu w pełnej głośności">↘ Wycisz</button><span class="go-div"></span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button></div>
   </div>
   <div class="sigbar" id="sigBar" aria-label="Sygnał startu następnego utworu" aria-live="polite"></div>
   <div class="upbar" id="upBar" aria-label="Nadchodzące wydarzenia"><span class="lbl up-lbl">Za chwilę</span><div class="up-list" id="upList"></div></div>
@@ -2458,10 +2465,10 @@ function goTarget(){
   const loc = locate(Math.min(tr.T, Math.max(0,layoutTotal-0.001))); const ci = loc ? loc.i : -1;
   return items.find(o=>o.i>ci) || null;
 }
-function startTail(sec){
+function startTail(sec, eq){
   const src = audio.currentSrc || audio.src; if (!src || audio.paused) return Promise.resolve();
   const t = new Audio(); t.preload="auto"; t.src=src; t.volume=audio.volume;
-  const from = audio.currentTime; const rec={el:t, t0:0, sec, eq: xmode==="dj"};
+  const from = audio.currentTime; const rec={el:t, t0:0, sec, eq: eq ?? xmode==="dj"};
   tails.push(rec);
   return new Promise(res=>{
     let done=false; const ready=()=>{ if (done) return; done=true; res(); };
@@ -2496,6 +2503,17 @@ async function goNext(){
   if (cross && xmode==="dj"){ fadeIn={sec:xfade, t0: (!audio.paused && audio.dataset.vid===tg.L.vid) ? performance.now() : 0, made:performance.now()}; fadeTick(); }
   renderAll();
 }
+/* fade the running number out and park on the start of the next one: it waits for N / Play */
+async function goHold(){
+  if (!tr.playing || tr.solo) return;
+  const tg=goTarget(); if (tr.loop) tr.loop=null;
+  if (tr.seg?.type==="audio" && !audio.paused) await startTail(xfade, false);
+  if (fadeIn) clearFadeIn();
+  tr.playing=false; tr.over=null; internalPause(); cancelAnimationFrame(tr.raf);
+  if (tg){ tr.marker=tg.L.start; tr.T=tg.L.start; tr.held=true; } else { tr.T=tr.marker; }
+  tr.stoppedAt=null; saveTransport(); updTransportUI(true); renderAll();
+}
+document.getElementById("goHold").onclick=()=>goHold();
 let goKey="";
 function updGo(force){
   const bar=document.getElementById("goBar"); if (!bar) return;
@@ -2508,8 +2526,10 @@ function updGo(force){
   const b=document.getElementById("goNext"); b.disabled=!tg;
   b.querySelector(".go-k").textContent = tr.playing ? "▶▶ Przejdź do" : "▶ Start";
   document.getElementById("goName").innerHTML = tg ? `${icon(stype(tg.s))} ${num}. ${esc(tg.s.title||"Bez tytułu")}` : "Nie ma już kolejnych numerów";
-  document.getElementById("goSub").textContent = fading ? (xmode==="dj"?"crossfade…":"wyciszam poprzedni…") : over>=0 ? `∞ ${tr.seg?.type==="audio"?"ambient gra dalej":"numer trwa dalej"} +${fmt(over)} · klawisz N` : tr.playing ? (xmode==="dj" ? `crossfade ${xfade} s · klawisz N` : `obecny wycisza się ${xfade} s · klawisz N`) : "klawisz N";
+  document.getElementById("goSub").textContent = fading ? (xmode==="dj"?"crossfade…":"wyciszam poprzedni…") : over>=0 ? `∞ +${fmt(over)} · N` : tr.playing ? (xmode==="dj" ? `crossfade ${xfade} s · N` : `wyciszenie ${xfade} s · N`) : "klawisz N";
   b.classList.toggle("over", over>=0);
+  const h=document.getElementById("goHold"); h.disabled = !tr.playing || !!tr.solo;
+  document.getElementById("goHoldSub").textContent = `${xfade} s, potem stoi`;
   bar.querySelectorAll("[data-xf]").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.xf===xfade)));
   bar.querySelectorAll("[data-xm]").forEach(x=>x.setAttribute("aria-pressed", String(x.dataset.xm===xmode)));
 }
