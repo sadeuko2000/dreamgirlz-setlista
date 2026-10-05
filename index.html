@@ -612,6 +612,11 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 .files-row .ft b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .files-row .ft span{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .files-row .ft span em{font-style:normal;color:var(--fg);opacity:.85}
+.fnorm{display:inline-flex;align-items:center;gap:6px}
+.fnorm .btn{font-size:12px;padding:3px 8px}
+.fnorm .btn[aria-pressed="true"]{color:var(--ok)}
+.fnorm select.in{width:auto;padding:2px 6px;font-size:12px}
+.files-row .flu{font-family:var(--f-mono);font-size:11px}
 .files-row .fs{font-size:12px;color:var(--muted);white-space:nowrap}
 .files-row.ok .fs{color:var(--ok)}
 .files-row.miss .fs{color:var(--bad)}
@@ -1292,7 +1297,7 @@ async function boot(){
   db.collection("feedback").onSnapshot(s=>{ fbs = s.docs.map(d=>({id:d.id,...d.data()})); renderAll(); }, onErr);
   db.collection("listenNotes").onSnapshot(s=>{ listenNotes = s.docs.map(d=>({id:d.id,...d.data()})); if (view==="listen") renderListen(); }, onErr);
   dlcap = await use("downloads");
-  db.doc("meta/show").onSnapshot(d=>{ meta = d.exists ? d.data() : {}; if (document.activeElement !== $("#showName")) $("#showName").value = meta.name || "Musical"; }, onErr);
+  db.doc("meta/show").onSnapshot(d=>{ meta = d.exists ? d.data() : {}; try{ applyLiveGain(); renderRelink(); }catch{} if (document.activeElement !== $("#showName")) $("#showName").value = meta.name || "Musical"; }, onErr);
 }
 function showMoved(){ const b=$("#banner"); b.innerHTML=`<b>Setlista przeniosła się pod nowy adres.</b> Ta wersja jest już tylko do podglądu i nie zapisuje zmian. Pracujcie tutaj: <a href="https://sadeuko2000.github.io/dreamgirlz-setlista/" target="_blank" rel="noopener">sadeuko2000.github.io/dreamgirlz-setlista</a>`; b.hidden=false; b.classList.add("moved"); }
 function showBanner(t){ const b=$("#banner"); b.textContent=t; b.hidden=false; }
@@ -1424,7 +1429,7 @@ async function relinkCheck(){
   relink.checking=true; const miss=[], ok=new Set(), err=new Set();
   if (window.__blobReady) { try{ await window.__blobReady(); }catch{} }
   await Promise.all(versions.filter(v=>v.assetId).map(async v=>{ try{ const r=await fetch(BLOB(v.assetId), {headers:{Range:"bytes=0-0"}}); if (r.status===400||r.status===404||r.status===403) miss.push(v.id); else if (r.ok) ok.add(v.id); else err.add(v.id); try{ r.body?.cancel(); }catch{} }catch{ err.add(v.id); } }));
-  relink.missing=miss; relink.ok=ok; relink.err=err; relink.checking=false; renderRelink();
+  relink.missing=miss; relink.ok=ok; relink.err=err; relink.checking=false; renderRelink(); measureMissing();
 }
 function fileState(s){
   const cv=currentVersion(s);
@@ -1452,16 +1457,20 @@ function renderRelink(){
     ${nWait||relink.checking?`<span class="fc">sprawdzam…</span>`:""}
     ${cnt("err")?`<span class="fc" title="Nie udało się sprawdzić: brak internetu albo serwer nie odpowiada">${cnt("err")} nie sprawdzono</span>`:""}
     ${relink.msg?`<span class="fmsg">${esc(relink.msg)}</span>`:`<span class="sp"></span>`}
+    <span class="fnorm" title="Głośniejsze nagrania są ściszane do wspólnego poziomu, cichsze zostają bez zmian (np. ambient pod poezję)"><button class="btn ghost" id="normTog" aria-pressed="${normOn()}">${normOn()?"⇅ Głośność wyrównana":"⇅ Głośność: oryginalna"}</button>${normOn()?`<select id="normTgt" class="in" aria-label="Docelowy poziom">${NORM_TARGETS.map(t=>`<option value="${t}" ${t===normTarget()?"selected":""}>${t} LUFS${t===-20?" (zalecane)":""}</option>`).join("")}</select>`:""}${loud.busy?`<span class="fc">mierzę głośność…</span>`:""}</span>
     ${up && missAll.length?`<button class="btn primary" id="relinkGo" title="Wskaż folder z oryginalnymi plikami, brakujące dopasuję po nazwie pliku">Wgraj brakujące z folderu</button>`:""}
     <button class="btn ghost" id="filesTog" aria-expanded="${open}">${open?"Zwiń ▴":"Pokaż listę ▾"}</button></div>`;
   const lab = {ok:"wgrane", miss:"brak pliku", none:"bez nagrania", wait:"…", err:"nie sprawdzono"};
   const list = !open ? "" : `<ul class="files-grid">${rows.map(r=>{
     const nv=versions.filter(v=>v.songId===r.s.id).length;
-    const ver = r.cv ? `<em>${esc(r.cv.label||"v?")}</em>${nv>1?` z ${nv}`:""} · ${esc(r.cv.fileName||"bez nazwy pliku")}` : "brak wersji z nagraniem";
+    const lu = r.cv && typeof r.cv.lufs==="number" ? (()=>{ const g=gainDb(r.cv); return ` · <span class="flu" title="Zmierzona głośność nagrania">${r.cv.lufs.toFixed(1)} LUFS${normOn()?(g<-0.05?` → ${g.toFixed(1)} dB`:" · bez zmian"):""}</span>`; })() : (r.cv && loud.cur===r.cv.id ? ` · <span class="flu">mierzę…</span>` : "");
+    const ver = r.cv ? `<em>${esc(r.cv.label||"v?")}</em>${nv>1?` z ${nv}`:""}${lu} · ${esc(r.cv.fileName||"bez nazwy pliku")}` : "brak wersji z nagraniem";
     const btn = up && r.st==="miss" ? `<button class="btn" data-fone="${r.cv.id}">Wgraj plik</button>` : `<span class="fs">${lab[r.st]}</span>`;
     return `<li class="files-row ${r.st}"><span class="fdot"></span><button class="ft" data-fsel="${r.s.id}" title="${esc(r.cv?.fileName||"")}"><b>${r.n}. ${esc(r.s.title||"Bez tytułu")}</b><span>${ver}</span></button>${btn}</li>`;
   }).join("")}</ul>`;
   box.innerHTML = head + list;
+  const nt=box.querySelector("#normTog"); if (nt) nt.onclick=()=>{ if (!canWrite) return; safeWrite(()=>db.doc("meta/show").set({...meta, normOn: !normOn()})); };
+  const ns=box.querySelector("#normTgt"); if (ns) ns.onchange=()=>{ if (!canWrite) return; safeWrite(()=>db.doc("meta/show").set({...meta, normTarget: +ns.value})); };
   box.querySelector("#filesTog").onclick=()=>{ relink.open = open?"0":"1"; try{ localStorage.setItem("filesOpen", relink.open); }catch{} renderRelink(); };
   const g=box.querySelector("#relinkGo"); if (g) g.onclick=()=>document.getElementById("relinkIn").click();
   box.querySelectorAll("[data-fsel]").forEach(b=>b.onclick=()=>select(b.dataset.fsel));
@@ -1475,7 +1484,7 @@ async function uploadInto(v, file){
   if (/\.(m4a|mp4|aac)$/.test(name)) { blob=file; type="video/mp4"; }
   else { blob=await encodeOpus(ab,()=>{}); type="video/webm"; }
   const up=await assets.upload(blob,{type});
-  const patch={assetId:up.id, peaks};
+  const patch={assetId:up.id, peaks}; const lu=measureLufs(ab); if (lu!=null) patch.lufs=lu;
   if (file.name!==v.fileName) patch.fileName=file.name;
   await db.doc("versions/"+v.id).update(patch);
 }
@@ -2336,6 +2345,7 @@ let internal=false;
 function internalPause(){ if (!audio.paused){ internal=true; audio.pause(); internal=false; } }
 function unloadAudio(){ internalPause(); if (audio.getAttribute("src")){ audio.removeAttribute("src"); audio.load(); } audio.dataset.vid=""; }
 function playAudioAt(asset, vid, at){
+  if (!fadeIn){ try{ audio.volume=gainOfVid(vid); }catch{} }
   const go=()=>{ try{ audio.currentTime=at; }catch{} audio.play().catch(()=>{ if (tr.playing){ trStop(); showBanner("Przeglądarka nie odtworzyła pliku. Naciśnij Play jeszcze raz."); } }); };
   if (audio.dataset.vid!==vid){ internalPause(); audio.dataset.vid=vid; audio.src=blobSrc(asset); audio.addEventListener("loadedmetadata", go, {once:true}); }
   else if (audio.readyState>=1) go(); else audio.addEventListener("loadedmetadata", go, {once:true});
@@ -2460,7 +2470,7 @@ function stopSolo(){ if (tr.solo) tr.soloPos = audio.currentTime||0; tr.solo=nul
 let xfade = 3; try{ const v=+localStorage.getItem("xfade"); if ([3,4,5,10].includes(v)) xfade=v; }catch{}
 let xmode = "dj"; try{ const v=localStorage.getItem("xmode"); if (v==="dj"||v==="out") xmode=v; }catch{}
 let fadeIn = null;                                  // DJ crossfade: the incoming number rises while the old one falls
-function clearFadeIn(){ fadeIn=null; try{ audio.volume=1; }catch{} }
+function clearFadeIn(){ fadeIn=null; try{ audio.volume=gainOfVid(audio.dataset.vid); }catch{} }
 
 const tails = [];
 function goTarget(){
@@ -2493,7 +2503,7 @@ function fadeTick(){
     if (k>=1){ r.el.pause(); r.el.removeAttribute("src"); r.el.load(); r.el.dataset.vid=""; try{ r.el.volume=1; }catch{} tails.splice(i,1); } else busy=true; }
   if (fadeIn){
     if (!fadeIn.t0 && now-fadeIn.made>900) fadeIn.t0=now;        // nothing to fade in (scene without music): let it go
-    if (fadeIn.t0){ const k=Math.min(1,(now-fadeIn.t0)/(fadeIn.sec*1000)); try{ audio.volume=Math.sin(k*Math.PI/2); }catch{} if (k>=1) clearFadeIn(); else busy=true; }
+    if (fadeIn.t0){ const k=Math.min(1,(now-fadeIn.t0)/(fadeIn.sec*1000)); try{ audio.volume=Math.sin(k*Math.PI/2)*gainOfVid(audio.dataset.vid); }catch{} if (k>=1) clearFadeIn(); else busy=true; }
     else busy=true;
   }
   const b=document.getElementById("goNext");
@@ -2699,7 +2709,7 @@ async function startUpload(s,file,extra={}){
     let up; try{ up=await assets.upload(blob,{type}); }catch(e){ throw new Error(uploadErr(e)); }
     setProg("Zapisuję wersję…");
     const vref=db.collection("versions").doc();
-    await vref.set({songId:s.id, label, note, assetId:up.id, duration:Math.round(ab.duration*10)/10, peaks, createdAt:Date.now(), by:myId||null, fileName:file.name, origSize:file.size||null, driveId:extra.driveId||null, driveModified:extra.driveModified||null});
+    await vref.set({songId:s.id, label, note, assetId:up.id, duration:Math.round(ab.duration*10)/10, peaks, lufs:measureLufs(ab), createdAt:Date.now(), by:myId||null, fileName:file.name, origSize:file.size||null, driveId:extra.driveId||null, driveModified:extra.driveModified||null});
     const cur = songs.find(x=>x.id===s.id) || s;
     const upd = {currentVersion:vref.id};
     if (!cur.title || DEFAULT_TITLES.includes(cur.title.trim())) upd.title = titleFromFile(file.name);
@@ -2719,6 +2729,65 @@ function uploadErr(e){
     case "not_granted": case "capability_disabled": return "Nie masz uprawnień do wgrywania plików na tej stronie.";
     default: return "Wysyłanie nie powiodło się. Spróbuj ponownie.";
   }
+}
+/* loudness (EBU R128 / BS.1770 integrated, K-weighted, gated), so every recording can be played at the same level */
+function measureLufs(ab){
+  const fs=ab.sampleRate, ch=Math.min(ab.numberOfChannels,2);
+  let K=Math.tan(Math.PI*1681.974450955533/fs), Q=0.7071752369554196, a0=1+K/Q+K*K;
+  const Vh=Math.pow(10,3.999843853973347/20), Vb=Math.pow(Vh,0.4996667741545416);
+  const b0=(Vh+Vb*K/Q+K*K)/a0, b1=2*(K*K-Vh)/a0, b2=(Vh-Vb*K/Q+K*K)/a0, a1=2*(K*K-1)/a0, a2=(1-K/Q+K*K)/a0;
+  K=Math.tan(Math.PI*38.13547087602444/fs); Q=0.5003270373238773; const c0=1+K/Q+K*K;
+  const h1=2*(K*K-1)/c0, h2=(1-K/Q+K*K)/c0;
+  const step=Math.max(1,Math.round(fs*0.1)), nSl=Math.floor(ab.length/step);   // 100 ms slices; a 400 ms block = 4 slices (75% overlap)
+  if (nSl<4) return null;
+  const sl=new Float64Array(nSl);
+  for (let c=0;c<ch;c++){
+    const x=ab.getChannelData(c);
+    let x1=0,x2=0,y1=0,y2=0,z1=0,z2=0;
+    for (let k=0;k<nSl;k++){ let acc=0; const end=(k+1)*step;
+      for (let i=k*step;i<end;i++){ const v=x[i];
+        const y=b0*v+b1*x1+b2*x2-a1*y1-a2*y2;
+        const z=y-2*y1+y2-h1*z1-h2*z2;
+        x2=x1; x1=v; y2=y1; y1=y; z2=z1; z1=z; acc+=z*z; }
+      sl[k]+=acc/step; } }
+  const nB=nSl-3, blk=new Float64Array(nB);
+  for (let k=0;k<nB;k++) blk[k]=(sl[k]+sl[k+1]+sl[k+2]+sl[k+3])/4;
+  const L=e=>-0.691+10*Math.log10(e);
+  let sum=0,n=0; for (const e of blk) if (e>0 && L(e)>-70){ sum+=e; n++; }
+  if (!n) return null;
+  const rel=L(sum/n)-10; sum=0; n=0;
+  for (const e of blk) if (e>0 && L(e)>-70 && L(e)>rel){ sum+=e; n++; }
+  return n ? Math.round(L(sum/n)*10)/10 : null;
+}
+/* playback level: louder recordings are turned down to the common target, quieter ones stay as they are */
+const NORM_TARGETS=[-16,-18,-20,-23];
+const normOn = () => meta?.normOn !== false;
+const normTarget = () => NORM_TARGETS.includes(meta?.normTarget) ? meta.normTarget : -20;
+function gainDb(v){ if (!v || typeof v.lufs!=="number" || !normOn()) return 0; return Math.min(0, normTarget()-v.lufs); }
+const gainFor = v => Math.pow(10, gainDb(v)/20);
+const gainOfVid = vid => gainFor(vById(vid));
+function applyLiveGain(){ if (fadeIn) return; try{ if (audio.dataset.vid) audio.volume=gainOfVid(audio.dataset.vid); }catch{} try{ const k=lv?.key; const info=k&&lvKeyInfo(k); if (info&&info.kind==="v") audio2.volume=gainFor(info.v); }catch{} }
+async function decodeForLoudness(buf){
+  const ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,24000,24000);
+  return await ctx.decodeAudioData(buf);
+}
+/* recordings that were uploaded before measuring existed get measured in the background, one at a time */
+const loud = { busy:false, tried:new Set() };
+async function measureMissing(){
+  if (loud.busy || !canWrite) return; loud.busy=true;
+  try{
+    for (;;){
+      const v = versions.find(x=>x.assetId && typeof x.lufs!=="number" && !x.lufsErr && !loud.tried.has(x.id) && relink.ok.has(x.id));
+      if (!v) break; loud.tried.add(v.id); loud.cur=v.id; renderRelink();
+      try{
+        const r=await fetch(blobSrc(v.assetId)); if (!r.ok) throw 0;
+        const ab=await decodeForLoudness(await r.arrayBuffer());
+        const lufs=measureLufs(ab);
+        await db.doc("versions/"+v.id).update(lufs==null ? {lufsErr:true} : {lufs});
+      }catch{}
+      await new Promise(res=>setTimeout(res,200));
+    }
+  } finally { loud.busy=false; loud.cur=null; renderRelink(); }
 }
 function computePeaks(ab,n){
   const len=ab.length, step=Math.max(1,Math.floor(len/n)); const chs=[]; for(let c=0;c<ab.numberOfChannels;c++) chs.push(ab.getChannelData(c));
@@ -2883,7 +2952,7 @@ async function lvLoad(key, autoplay){
   lv.key=key; lv.msg=""; lv.err=false; lv.peaks=null; lv.fileType=null;
   if (info.kind==="v"){
     lv.peaks = info.v.peaks||null;
-    audio2.src = blobSrc(info.v.assetId);
+    audio2.src = blobSrc(info.v.assetId); try{ audio2.volume=gainFor(info.v); }catch{}
     const i0=vIn(info.v); if (i0>0) audio2.addEventListener("loadedmetadata", ()=>{ try{ audio2.currentTime=i0; }catch{} }, {once:true});
     renderListen();
     if (autoplay) audio2.play().catch(()=>{});
@@ -2897,7 +2966,7 @@ async function lvLoad(key, autoplay){
     const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
     if (lv.key!==key) return;
     const blob = new Blob([bytes], {type: /\.m4a$/i.test(info.f.title) ? "audio/mp4" : (info.f.mimeType||"audio/mpeg")});
-    lv.objUrl = URL.createObjectURL(blob); audio2.src = lv.objUrl; lv.loading=null;
+    lv.objUrl = URL.createObjectURL(blob); audio2.src = lv.objUrl; try{ audio2.volume=1; }catch{} lv.loading=null;
     try { const ctx=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(2,48000,48000); const ab=await ctx.decodeAudioData(bytes.buffer.slice(0)); if (lv.key===key){ lv.peaks=computePeaks(ab,800); lvDraw(); } } catch {}
     renderListen(); if (autoplay) audio2.play().catch(()=>{});
   }catch(e){
