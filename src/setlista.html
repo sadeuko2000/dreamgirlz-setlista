@@ -701,6 +701,22 @@ html.skin-nocny .pb,html.skin-nocny .cue,html.skin-nocny .fbm{border:1px solid r
 html.skin-nocny .item[aria-current="true"]{background:var(--fg);color:var(--bg)}
 html.skin-nocny .item[aria-current="true"] .c,html.skin-nocny .item[aria-current="true"] .no,html.skin-nocny .item[aria-current="true"] .t .ico{color:#55575D}
 html.skin-nocny .tb-time{color:var(--fg)}
+
+/* type texture: same actress colour, the pattern says what kind of number it is (piosenka plain, poezja lines, performance diagonals, scenka dots) */
+:root{--tx-poezja:repeating-linear-gradient(0deg,rgba(0,0,0,.20) 0 1.5px,transparent 1.5px 8px);--tx-performance:repeating-linear-gradient(135deg,rgba(0,0,0,.18) 0 5px,transparent 5px 12px);--tx-scenka:radial-gradient(rgba(0,0,0,.30) 1.6px,transparent 2.1px) 0 0/9px 9px;
+  --txl-poezja:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 7px);--txl-performance:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 4px,transparent 4px 11px);--txl-scenka:radial-gradient(rgba(255,255,255,.12) 1.2px,transparent 1.7px) 0 0/8px 8px}
+.blk.one[data-type=poezja]{background:var(--tx-poezja),var(--c)}
+.blk.one[data-type=performance]{background:var(--tx-performance),var(--c)}
+.blk.one[data-type=scenka]{background:var(--tx-scenka),var(--c)}
+.blk.pale[data-type=poezja]{background:var(--tx-poezja),var(--fill)}
+.blk.pale[data-type=performance]{background:var(--tx-performance),var(--fill)}
+.blk.pale[data-type=scenka]{background:var(--tx-scenka),var(--fill)}
+.item.tint[data-type=poezja]{background:var(--txl-poezja),var(--tint)}
+.item.tint[data-type=performance]{background:var(--txl-performance),var(--tint)}
+.item.tint[data-type=scenka]{background:var(--txl-scenka),var(--tint)}
+.item.tint[data-type=poezja][aria-current="true"]{background:var(--txl-poezja),var(--tint-s)}
+.item.tint[data-type=performance][aria-current="true"]{background:var(--txl-performance),var(--tint-s)}
+.item.tint[data-type=scenka][aria-current="true"]{background:var(--txl-scenka),var(--tint-s)}
 </style>
 
 <div class="wrap">
@@ -1270,7 +1286,7 @@ function renderTimeline(){
     const pale = !isBreak && !cvv && acts.length>0;
     const paleMix = k => `color-mix(in srgb, ${actVar(k)} 50%, #8B8D92)`;
     const fill = pale ? (acts.length===1 ? paleMix(acts[0]) : `linear-gradient(90deg,${acts.map((k,j)=>`${paleMix(k)} ${j/acts.length*100}% ${(j+1)/acts.length*100}%`).join(",")})`) : "";
-    return `<button class="blk${isBreak?" brk":""}${acts.length===1&&!hasParts&&!pale?" one":""}${hasParts?" parts":""}${pale?" pale":""}${L.real?"":" nolen"}${s.id===selId?" sel":""}${dim?" dim":""}" data-id="${s.id}"
+    return `<button class="blk${isBreak?" brk":""}${acts.length===1&&!hasParts&&!pale?" one":""}${hasParts?" parts":""}${pale?" pale":""}${L.real?"":" nolen"}${s.id===selId?" sel":""}${dim?" dim":""}" data-id="${s.id}" data-type="${isBreak?"break":stype(s)}"
       style="left:calc(${left}% + 1px);width:calc(${width}% - 2px);${cvar}${bar?`--bar:${bar};`:""}${pale?`--fill:${fill};`:""}" title="${esc(typeName(stype(s)))} · ${esc((isBreak?"":n+". ")+(s.title||""))}${cvf?" · plik: "+esc(cvf):""} · ${L.real?fmt(L.real):"brak nagrania"}">
       ${waveSvg}${ps}${pt}${!isBreak&&s.after==="stop"?`<span class="bstopbar${honorStops?"":" off"}"></span>`:""}<span class="btop"><span class="bn">${icon(stype(s))}${isBreak?"":n}${isBreak?"":`<span class="dot s-${esc(s.status||"szkic")}"></span>`}</span><span class="bt">${esc(s.title||"Bez tytułu")}</span>${!isBreak&&s.after==="stop"?`<span class="bstop" title="Po tym numerze playhead się zatrzymuje">⏸</span>`:""}<span class="bd">${L.real?fmt(L.real):"—"}</span></span>${isBreak?"":(cvf?`<span class="bf" title="${esc(cvf)}">${esc(cvf)}</span>`:`<span class="bf none">brak pliku</span>`)}</button>`;
   }).join("");
@@ -1474,7 +1490,7 @@ function renderList(){
     const mix = (k,pct) => `color-mix(in srgb, ${actVar(k)} ${pct}%, var(--surface))`;
     const tintOf = pct => acts.length===1 ? mix(acts[0],pct) : acts.length ? `linear-gradient(90deg,${acts.map((k,j)=>`${mix(k,pct)} ${j/acts.length*100}% ${(j+1)/acts.length*100}%`).join(",")})` : "";
     const tint = tintOf(25), tintS = tintOf(40);
-    return `<li class="item${isBreak?" brk":""}${acts.length===1?" one":""}${tint?" tint":""}${playingHere?" playing":""}" style="${acts.length||pl.length?`--c:${actVar(acts[0]||"all")};--vbar:${vbar};`:""}${tint?`--tint:${tint};--tint-s:${tintS};`:""}--h:${h}px" data-id="${s.id}" aria-current="${s.id===selId}" tabindex="0">
+    return `<li class="item${isBreak?" brk":""}${acts.length===1?" one":""}${tint?" tint":""}${playingHere?" playing":""}" data-type="${isBreak?"break":stype(s)}" style="${acts.length||pl.length?`--c:${actVar(acts[0]||"all")};--vbar:${vbar};`:""}${tint?`--tint:${tint};--tint-s:${tintS};`:""}--h:${h}px" data-id="${s.id}" aria-current="${s.id===selId}" tabindex="0">
       ${wp?`<svg class="iw" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${wp}"/></svg>`:""}
       <span class="no">${isBreak?"":n}<span class="st">${fmt(start)}</span></span>
       <span class="t" title="${esc(typeName(stype(s)))}">${icon(stype(s))}<b>${esc(s.title||"Bez tytułu")}</b></span>
