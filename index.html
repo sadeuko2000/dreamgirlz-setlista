@@ -646,6 +646,21 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 /* cue-line strip: the spoken line that starts the next number */
 .sigbar{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-height:58px;box-sizing:border-box;min-width:0}
 .sigbar:empty{display:none}
+.gobar{display:flex;gap:8px;align-items:stretch;min-width:0}
+.gobtn{flex:1;min-width:0;position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;height:52px;padding:0 18px;border-radius:var(--r);border:1px solid var(--accent);background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 38%,var(--surface)) var(--gp,0%),color-mix(in srgb,var(--accent) 12%,var(--surface)) var(--gp,0%));color:var(--fg);font:inherit;text-align:left}
+.gobtn:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 38%,var(--surface)) var(--gp,0%),color-mix(in srgb,var(--accent) 22%,var(--surface)) var(--gp,0%))}
+.gobtn:active{transform:translateY(1px)}
+.gobtn .go-k{flex:none;font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.gobtn b{flex:0 1 auto;min-width:0;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gobtn .go-sub{margin-left:auto;flex:none;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.gobtn.fading{border-color:var(--fg)}
+.gobtn.fading .go-sub{color:var(--fg)}
+.gobtn:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.go-fade{flex:none;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 6px}
+.go-fade .lbl{margin-right:6px;font-size:10px}
+.go-fade button{border:0;background:transparent;color:var(--muted);padding:6px 8px;border-radius:6px;font-family:var(--f-mono);font-size:12px}
+.go-fade button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+@media (max-width:820px){ .gobar{display:none} }
 .sig-lbl{flex:none}
 .sig-song{flex:none;display:inline-flex;align-items:center;gap:8px;max-width:30%;border:0;background:var(--sunk);border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;cursor:pointer}
 .sig-song span{overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -773,6 +788,10 @@ html.skin-nocny .tb-time{color:var(--fg)}
       </div>
     </div>
   </section>
+  <div class="gobar" id="goBar" hidden>
+    <button class="gobtn" id="goNext" title="Przejście do następnego numeru: obecny wycisza się, następny startuje od razu (klawisz N)"><span class="go-k">▶▶ Przejdź do</span><b id="goName">—</b><span class="go-sub" id="goSub"></span></button>
+    <div class="go-fade" role="group" aria-label="Długość wyciszenia"><span class="lbl">Wyciszenie</span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button></div>
+  </div>
   <div class="sigbar" id="sigBar" aria-label="Sygnał startu następnego utworu" aria-live="polite"></div>
   <div class="upbar" id="upBar" aria-label="Nadchodzące wydarzenia"><span class="lbl up-lbl">Za chwilę</span><div class="up-list" id="upList"></div></div>
 
@@ -2399,6 +2418,71 @@ function playSolo(v){
 }
 function stopSolo(){ if (tr.solo) tr.soloPos = audio.currentTime||0; tr.solo=null; tr.playing=false; internalPause(); cancelAnimationFrame(tr.raf); updTransportUI(true); }
 
+/* "Przejdź do": the running number fades out over a few seconds on a second player while the next one starts at once */
+let xfade = 4; try{ const v=+localStorage.getItem("xfade"); if ([3,4,5].includes(v)) xfade=v; }catch{}
+const tails = [];
+function goTarget(){
+  computeLayout(); if (!layout.length) return null;
+  const items = layout.map((L,i)=>({L,i,s:songs.find(x=>x.id===L.id)})).filter(o=>o.s && o.s.kind!=="break");
+  if (!tr.playing || tr.solo){
+    const at = items.find(o=>Math.abs(o.L.start-tr.T)<0.25);           // parked on the start of a number: that one
+    if (at) return at;
+  }
+  const loc = locate(Math.min(tr.T, Math.max(0,layoutTotal-0.001))); const ci = loc ? loc.i : -1;
+  return items.find(o=>o.i>ci) || null;
+}
+function startTail(sec){
+  const src = audio.currentSrc || audio.src; if (!src || audio.paused) return Promise.resolve();
+  const t = new Audio(); t.preload="auto"; t.src=src; t.volume=audio.volume;
+  const from = audio.currentTime; const rec={el:t, t0:0, sec};
+  tails.push(rec);
+  return new Promise(res=>{
+    let done=false; const ready=()=>{ if (done) return; done=true; res(); };
+    t.addEventListener("loadedmetadata", ()=>{ try{ t.currentTime=from+0.05; }catch{} t.play().then(()=>{ rec.t0=performance.now(); fadeTick(); ready(); }).catch(ready); }, {once:true});
+    setTimeout(ready, 450);                       // never hold the next number back for long
+  });
+}
+function fadeTick(){
+  const now=performance.now(); let busy=false;
+  for (let i=tails.length-1;i>=0;i--){ const r=tails[i]; if (!r.t0){ busy=true; continue; }
+    const k=Math.min(1,(now-r.t0)/(r.sec*1000));
+    try{ r.el.volume = Math.max(0, (1-k)*(1-k)); }catch{}
+    if (k>=1){ r.el.pause(); r.el.removeAttribute("src"); r.el.load(); tails.splice(i,1); } else busy=true; }
+  const b=document.getElementById("goNext");
+  if (b){ const r=tails[tails.length-1]; const k=r&&r.t0 ? Math.min(1,(now-r.t0)/(r.sec*1000)) : 0;
+    b.style.setProperty("--gp", (r?Math.round((1-k)*100):0)+"%"); b.classList.toggle("fading", !!r); }
+  if (busy) setTimeout(fadeTick, 40); else updGo(true);
+}
+async function goNext(){
+  const tg=goTarget(); if (!tg) return;
+  if (tr.loop) tr.loop=null;
+  if (tr.playing && !tr.solo && tr.seg?.type==="audio" && !audio.paused) await startTail(xfade);
+  trSetPos(tg.L.start);
+  if (!tr.playing || tr.solo) trPlay();
+  renderAll();
+}
+let goKey="";
+function updGo(force){
+  const bar=document.getElementById("goBar"); if (!bar) return;
+  if (!layout.length){ bar.hidden=true; return; } bar.hidden=false;
+  const tg=goTarget(); let n=0, num=0; if (tg){ for (const L of layout){ const x=songs.find(q=>q.id===L.id); if (x && x.kind!=="break") n++; if (L.id===tg.L.id){ num=n; break; } } }
+  const fading = tails.length>0;
+  const key=(tg?tg.L.id+(tg.s.title||""):"-")+"|"+xfade+"|"+tr.playing+"|"+fading;
+  if (!force && key===goKey) return; goKey=key;
+  const b=document.getElementById("goNext"); b.disabled=!tg;
+  b.querySelector(".go-k").textContent = tr.playing ? "▶▶ Przejdź do" : "▶ Start";
+  document.getElementById("goName").innerHTML = tg ? `${icon(stype(tg.s))} ${num}. ${esc(tg.s.title||"Bez tytułu")}` : "Nie ma już kolejnych numerów";
+  document.getElementById("goSub").textContent = fading ? "wyciszam poprzedni…" : tr.playing ? `obecny wycisza się ${xfade} s · klawisz N` : "klawisz N";
+  bar.querySelectorAll("[data-xf]").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.xf===xfade)));
+}
+document.getElementById("goNext").onclick=()=>goNext();
+document.querySelectorAll("#goBar [data-xf]").forEach(x=>x.onclick=()=>{ xfade=+x.dataset.xf; try{ localStorage.setItem("xfade", String(xfade)); }catch{} updGo(true); });
+document.addEventListener("keydown", e=>{
+  if ((e.key!=="n" && e.key!=="N") || e.metaKey || e.ctrlKey || e.altKey || view!=="set") return;
+  const t=e.target; if (t && (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || t.isContentEditable)) return;
+  e.preventDefault(); goNext();
+});
+
 let lastIdxUI=-2;
 function updTransportUI(full){
   if (!layout.length) computeLayout();
@@ -2416,7 +2500,7 @@ function updTransportUI(full){
   const lb=$("#tLoop"); if (lb){ lb.hidden=!tr.loop; if (tr.loop){ lb.innerHTML=`<span class="sw" style="--c:var(--a-${tr.loop.k})"></span>⟲ ${esc(tr.loop.name)} · ${fmt(tr.loop.b-tr.loop.a)} <span aria-hidden="true">✕</span>`; } }
   const cb=$("#tCont"); if (cb){ const show = !tr.playing && tr.stoppedAt!=null && Math.abs(tr.stoppedAt-tr.T)>0.5 && tr.stoppedAt<total; cb.hidden=!show; if (show) cb.textContent=`↩ Kontynuuj od ${fmt(tr.stoppedAt)}`; }
   updPrompter();
-  renderUpcoming(total); renderSignal();
+  renderUpcoming(total); renderSignal(); updGo();
   const rb=$("#railBack"); if (rb) rb.hidden=!layout.length;
   updCuePh(); updFbPh();
   // horizontal timeline
