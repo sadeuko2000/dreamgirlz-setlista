@@ -673,12 +673,13 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .addbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 12px;min-height:44px;box-sizing:border-box;min-width:0}
 /* cue-line strip: the spoken line that starts the next number */
 .sigbar{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-height:58px;box-sizing:border-box;min-width:0}
-.sigbar:empty{display:none}
-.sigrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;min-width:0}
+.sigbar:empty{display:flex}
+.gobar>.sigbar{min-height:52px;min-width:0}
+.sigrow{display:none!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;min-width:0}
 .sigrow>.upbar{height:auto;min-height:58px}
 .sigrow>.sigbar{min-width:0}
 @media (max-width:820px){ .sigrow{grid-template-columns:minmax(0,1fr)} }
-.gobar{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;align-items:stretch;min-width:0}
+.gobar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;min-width:0}
 .gobar>.gobtn{min-width:0}
 .gobar>.gohold{flex:1 0 auto;min-height:52px}
 .gobar>.go-fade{min-height:52px;min-width:0;flex-wrap:wrap;justify-content:center;align-content:center;row-gap:2px;padding:4px 8px}
@@ -836,11 +837,11 @@ html.skin-nocny .tb-time{color:var(--fg)}
     </div>
   </section>
   <div class="gobar" id="goBar" hidden>
+    <div class="sigbar" id="sigBar" aria-label="Sygnał startu następnego utworu" aria-live="polite"></div>
     <button class="gobtn" id="goNext" title="Przejście do następnego numeru: obecny wycisza się, następny startuje od razu (klawisz N)"><span class="go-k">▶▶ Przejdź do</span><b id="goName">—</b><span class="go-sub" id="goSub"></span></button>
     <div class="go-fade" role="group" aria-label="Rodzaj i czas przejścia"><span class="go-from" id="goFrom"></span><button data-xm="dj" title="Jak fader DJ-ski: poprzedni cichnie, a następny w tym samym czasie się pojawia">✕ Crossfade</button><button data-xm="hold" title="Wycisz i czekaj: poprzedni cichnie, następny czeka na Start">⏸ Czekaj</button><span class="go-div"></span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button><button data-xf="10">10 s</button></div>
   </div>
   <div class="sigrow">
-  <div class="sigbar" id="sigBar" aria-label="Sygnał startu następnego utworu" aria-live="polite"></div>
     <div class="upbar" id="upBar" aria-label="Nadchodzące wydarzenia"><span class="lbl up-lbl">Za chwilę</span><div class="up-list" id="upList"></div></div>
   </div>
 
