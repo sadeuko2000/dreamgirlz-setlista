@@ -87,7 +87,9 @@ button{cursor:pointer}
 .blk.one .bw{fill:#000;opacity:.16}
 .tl-scroll{background:var(--sunk);border-radius:6px;padding:4px}
 .tl-panel{position:relative}
-.tl-panel>#tFit{display:block;margin:0 0 6px auto;padding:2px 8px;font-size:11px}
+.tl-tools{display:flex;justify-content:flex-end;gap:6px;margin:0 0 6px}
+.tl-tools .btn{padding:2px 8px;font-size:11px}
+.tl-tools .tb-follow[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 
 .blk .bn{display:inline-flex;align-items:center;gap:4px}
 .blk .bn .dot{width:6px;height:6px}
@@ -881,7 +883,10 @@ html.skin-nocny .tb-time{color:var(--fg)}
   <div id="banner" class="banner" hidden></div>
 
   <section class="tl-panel" aria-label="Oś spektaklu">
-    <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
+    <div class="tl-tools">
+      <button class="btn tb-cue tb-follow" id="tFollow" aria-pressed="true" hidden title="Przewijaj oś razem z playheadem podczas grania">◎ Śledź playhead</button>
+      <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
+    </div>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl" id="tl">
         <div class="tl-track" id="tlTrack"></div>
@@ -1620,9 +1625,23 @@ let tlLayout = [];
 /* what happens when a number ends: "marked" = stop only after numbers set to "Stop, czekaj"; "all" = stop after every number; "off" = run straight through */
 let stopMode = "marked";   // a number marked "⏸ Stop, czekaj" always stops; the global switch was removed on request
 const honorStops = true;
+let tlFollow = true; try { tlFollow = localStorage.getItem("tlFollow")!=="0"; } catch {}
 let tlFit = true; try { tlFit = localStorage.getItem("tlFit")!=="0"; } catch {}
-{ const b=document.getElementById("tFit"); const sync=()=>{ b.setAttribute("aria-pressed", String(tlFit)); b.textContent = tlFit ? "⇔ Cały spektakl" : "⇆ Szczegóły"; };
-  sync(); b.onclick=()=>{ tlFit=!tlFit; try{ localStorage.setItem("tlFit", tlFit?"1":"0"); }catch{} sync(); renderAll(); }; }       // [{id, start, len}] in seconds, for the playhead
+{ const b=document.getElementById("tFit"); const sync=()=>{ b.setAttribute("aria-pressed", String(tlFit)); b.textContent = tlFit ? "⇔ Cały spektakl" : "⇆ Szczegóły"; const f=document.getElementById("tFollow"); f.hidden=tlFit; f.setAttribute("aria-pressed", String(tlFollow)); };
+  sync(); b.onclick=()=>{ tlFit=!tlFit; try{ localStorage.setItem("tlFit", tlFit?"1":"0"); }catch{} sync(); renderAll(); }; }
+/* follow the playhead: in the scrolling (Szczegóły) view the timeline scrolls along while the show plays; scrolling by hand pauses it for a few seconds */
+let tlFollowHold = 0, tlAutoScroll = false;
+{ const f=document.getElementById("tFollow"); f.setAttribute("aria-pressed", String(tlFollow));
+  f.onclick=()=>{ tlFollow=!tlFollow; tlFollowHold=0; try{ localStorage.setItem("tlFollow", tlFollow?"1":"0"); }catch{} f.setAttribute("aria-pressed", String(tlFollow)); followPlayhead(true); };
+  const sc=document.getElementById("tlScroll");
+  sc.addEventListener("scroll", ()=>{ if (tlAutoScroll){ tlAutoScroll=false; return; } if (tr.playing) tlFollowHold=Date.now()+4000; }, {passive:true}); }
+function followPlayhead(force){
+  if (tlFit || !tlFollow) return; if (!force && (!tr.playing || Date.now()<tlFollowHold)) return;
+  const sc=document.getElementById("tlScroll"), tl=document.getElementById("tl"); if (!sc||!tl) return;
+  const total=layoutTotal||1, x=Math.min(tr.T,total)/total*tl.offsetWidth, w=sc.clientWidth; if (tl.offsetWidth<=w+2) return;
+  const rel=x-sc.scrollLeft;
+  if (force || rel<w*0.1 || rel>w*0.75){ const to=Math.max(0, Math.min(tl.offsetWidth-w, x-w*0.25)); if (Math.abs(to-sc.scrollLeft)>1){ tlAutoScroll=true; sc.scrollLeft=to; } }
+}       // [{id, start, len}] in seconds, for the playhead
 function pausesBefore(sid, t){ const cv=currentVersion(songs.find(x=>x.id===sid)||{}); const i0=cv?vIn(cv):0; return songMarkers(sid).filter(m=>m.kind==="pauza"&&m.t<t&&m.t>=i0).reduce((a,m)=>a+(m.len||0),0); }
 function renderLegend(){
   const el=$("#legend"); if(!el) return;
@@ -2765,7 +2784,7 @@ function updTransportUI(full){
   const rb=$("#railBack"); if (rb) rb.hidden=!layout.length;
   updCuePh(); updFbPh();
   // horizontal timeline
-  const pos=$("#tlPos"); if (pos){ pos.hidden=!layout.length; pos.style.left=`calc(${Math.min(tr.T,total)/total*100}% - 1px)`; }
+  const pos=$("#tlPos"); if (pos){ pos.hidden=!layout.length; pos.style.left=`calc(${Math.min(tr.T,total)/total*100}% - 1px)`; } followPlayhead();
   const mk=$("#tlMarker"); if (mk) mk.style.left = `${tr.marker/total*100}%`;
   // list: playhead line inside the current number
   if (loc){
