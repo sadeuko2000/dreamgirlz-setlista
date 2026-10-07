@@ -604,6 +604,19 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 .relink{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--spot-soft)}
 .relink .hint{flex:1 1 220px}
 .top .files{grid-column:1/-1;flex-basis:100%;background:transparent;border-radius:0;padding:8px 0 2px;border-top:1px solid var(--line);margin-top:2px}
+/* one-row header: tabs | files status | logout + show length (show name and the file list toggle hidden on request) */
+.top>div:not(.vsw):not(.stats){display:none!important}
+.top #filesTog,.top .files-grid{display:none!important}
+.top .files{border-top:0;margin:0;padding:0;min-width:0}
+.top .files-h{flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
+.top .fnorm,.top .files-h>.fc{flex:none}
+.top .files-h .fmsg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:821px){
+  .top{grid-template-columns:auto minmax(0,1fr) auto;column-gap:22px}
+  .top .vsw{grid-column:1;grid-row:1;justify-self:start}
+  .top .files{grid-column:2;grid-row:1}
+  .top .stats{grid-column:3;grid-row:1}
+}
 .files{background:var(--surface);border-radius:var(--r);padding:8px 14px;display:flex;flex-direction:column;gap:8px}
 .files-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px}
 .files-h b{font-size:13px;letter-spacing:.02em}
@@ -1242,7 +1255,7 @@ function renderRelink(){
     ${nWait||relink.checking?`<span class="fc">sprawdzam…</span>`:""}
     ${cnt("err")?`<span class="fc" title="Nie udało się sprawdzić: brak internetu albo serwer nie odpowiada">${cnt("err")} nie sprawdzono</span>`:""}
     ${relink.msg?`<span class="fmsg">${esc(relink.msg)}</span>`:`<span class="sp"></span>`}
-    <span class="fnorm" title="Głośniejsze nagrania są ściszane do wspólnego poziomu, cichsze zostają bez zmian (np. ambient pod poezję)"><button class="btn ghost" id="normTog" aria-pressed="${normOn()}">${normOn()?"⇅ Głośność wyrównana":"⇅ Głośność: oryginalna"}</button>${normOn()?`<select id="normTgt" class="in" aria-label="Docelowy poziom">${NORM_TARGETS.map(t=>`<option value="${t}" ${t===normTarget()?"selected":""}>${t} LUFS${t===-20?" (zalecane)":""}</option>`).join("")}</select>`:""}${loud.busy?`<span class="fc">mierzę głośność…</span>`:""}</span>
+    <span class="fnorm" title="Głośniejsze nagrania są ściszane do wspólnego poziomu, cichsze zostają bez zmian (np. ambient pod poezję)"><button class="btn ghost" id="normTog" aria-pressed="${normOn()}">${normOn()?"⇅ Głośność wyrównana":"⇅ Głośność oryginalna"}</button>${normOn()?`<select id="normTgt" class="in" aria-label="Docelowy poziom">${NORM_TARGETS.map(t=>`<option value="${t}" ${t===normTarget()?"selected":""}>${t} LUFS</option>`).join("")}</select>`:""}${loud.busy?`<span class="fc">mierzę głośność…</span>`:""}</span>
     ${up && missAll.length?`<button class="btn primary" id="relinkGo" title="Wskaż folder z oryginalnymi plikami, brakujące dopasuję po nazwie pliku">Wgraj brakujące z folderu</button>`:""}
     <button class="btn ghost" id="filesTog" aria-expanded="${open}">${open?"Zwiń ▴":"Pokaż listę ▾"}</button></div>`;
   const lab = {ok:"wgrane", miss:"brak pliku", none:"bez nagrania", wait:"…", err:"nie sprawdzono"};
