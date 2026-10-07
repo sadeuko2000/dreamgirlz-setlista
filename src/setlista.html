@@ -131,8 +131,9 @@ button{cursor:pointer}
 .item:hover .grip{opacity:.9}
 .item .grip:hover{background:rgba(255,255,255,.06)}
 .item.dragging{opacity:.45}
-.item.drop-before{box-shadow:inset 0 3px 0 var(--accent)}
-.item.drop-after{box-shadow:inset 0 -3px 0 var(--accent)}
+.drag-ghost{box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 0 2px var(--accent);border-radius:8px;opacity:.95;list-style:none}
+.drop-line{position:fixed;height:4px;border-radius:2px;background:var(--accent);z-index:89;pointer-events:none;box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+.item.dragging{opacity:.25}
 body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
 #lsCol .list-head[hidden]{display:none}
 /* transport lives in the header row: tabs | play stop time | files | logout + show length */
@@ -712,6 +713,8 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .sigbar{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-height:58px;box-sizing:border-box;min-width:0}
 .sigbar:empty{display:flex}
 .gobar>.sigbar{min-height:52px;min-width:0}
+.gobar>.sigbar .sig-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+.gobar>.sigbar .sig-line .btn{display:none}
 .sigrow{display:none!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;min-width:0}
 .sigrow>.upbar{height:auto;min-height:58px}
 .sigrow>.sigbar{min-width:0}
@@ -1580,7 +1583,51 @@ function renderFiltersUnused(){
      ...others.map(n=>`<button class="chip" data-f="${esc(n)}" aria-pressed="${filter===n}">${esc(n)}</button>`)].join("");
   el.querySelectorAll("button").forEach(b=>b.onclick=()=>{ filter=b.dataset.f||null; remember(); renderAll(); });
 }
+let listDrag=null;
+function startListDrag(e, li, ol, immediate){
+  const id=li.dataset.id, x0=e.clientX, y0=e.clientY, pid=e.pointerId;
+  let on=false, ghost=null, line=null, to=-1, raf=0, lastY=y0, all=[], from=-1;
+  const begin=()=>{
+    on=true; all=[...ol.querySelectorAll(".item")]; from=all.indexOf(li); to=from;
+    listDrag={id};
+    const r=li.getBoundingClientRect();
+    ghost=li.cloneNode(true); ghost.classList.add("drag-ghost"); ghost.removeAttribute("id");
+    Object.assign(ghost.style,{position:"fixed",left:r.left+"px",top:r.top+"px",width:r.width+"px",height:r.height+"px",margin:0,zIndex:90,pointerEvents:"none"});
+    ghost.dataset.dy=String(y0-r.top); document.body.append(ghost);
+    line=document.createElement("div"); line.className="drop-line"; document.body.append(line);
+    li.classList.add("dragging"); document.body.classList.add("grabbing");
+    try{ li.setPointerCapture(pid); }catch{}
+  };
+  const place=y=>{
+    const mids=all.map(x=>{ const r=x.getBoundingClientRect(); return r.top+r.height/2; });
+    let slot=mids.filter((m,i)=>i!==from && m<y).length;           // position among the other tiles
+    to=slot;
+    const others=all.filter((_,i)=>i!==from);
+    const box=ol.getBoundingClientRect();
+    let ly; if (!others.length) ly=box.top; else if (slot>=others.length) ly=others[others.length-1].getBoundingClientRect().bottom; else ly=others[slot].getBoundingClientRect().top;
+    Object.assign(line.style,{left:box.left+"px",width:box.width+"px",top:(ly-2)+"px"});
+    line.hidden = (to===from);
+    ghost.style.top=(y-(+ghost.dataset.dy))+"px";
+  };
+  const tick=()=>{ if (!on) return; const h=window.innerHeight; const edge=70;
+    if (lastY<edge) window.scrollBy(0,-Math.ceil((edge-lastY)/5)); else if (lastY>h-edge) window.scrollBy(0,Math.ceil((lastY-(h-edge))/5));
+    place(lastY); raf=requestAnimationFrame(tick); };
+  const mv=ev=>{ if (ev.pointerId!==pid) return; lastY=ev.clientY;
+    if (!on){ if (immediate || Math.abs(ev.clientY-y0)>6){ begin(); raf=requestAnimationFrame(tick); } else return; }
+    ev.preventDefault(); place(lastY); };
+  const end=ev=>{ if (ev && ev.pointerId!==pid) return;
+    window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",end); window.removeEventListener("pointercancel",end);
+    if (!on) return;
+    on=false; cancelAnimationFrame(raf); ghost?.remove(); line?.remove(); li.classList.remove("dragging"); document.body.classList.remove("grabbing");
+    const target=to; listDrag=null;
+    const swallow=ce=>{ ce.stopPropagation(); ce.preventDefault(); }; window.addEventListener("click", swallow, {capture:true, once:true}); setTimeout(()=>window.removeEventListener("click", swallow, {capture:true}), 50);
+    if (target!==from && target>=0) moveTo(id, target); else renderAll();
+  };
+  window.addEventListener("pointermove",mv,{passive:false}); window.addEventListener("pointerup",end); window.addEventListener("pointercancel",end);
+  if (immediate){ e.preventDefault(); begin(); place(y0); raf=requestAnimationFrame(tick); }
+}
 function renderList(){
+  if (listDrag) return;          // never rebuild the list under the user's hand; it redraws on drop
   renderArch(); updOrderBtns();
   const items = sorted();
   const ol = $("#list"); const empty = $("#listEmpty");
@@ -1635,26 +1682,17 @@ function renderList(){
     };
     li.onclick = go; li.onkeydown = e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
   });
-  /* drag a tile by its grip to a new place in the show */
-  ol.querySelectorAll("[data-grip]").forEach(g=>{
-    g.onclick=e=>e.stopPropagation();
-    g.onpointerdown=e=>{
-      e.preventDefault(); e.stopPropagation();
-      const li=g.closest(".item"), id=g.dataset.grip; const all=[...ol.querySelectorAll(".item")]; const from=all.indexOf(li);
-      li.classList.add("dragging"); document.body.classList.add("grabbing");
-      let to=from;
-      const mark=()=>{ all.forEach(x=>x.classList.remove("drop-before","drop-after")); if (to===from) return;
-        if (to<from) all[to].classList.add("drop-before"); else all[to].classList.add("drop-after"); };
-      const mv=ev=>{ const y=ev.clientY; let t;
-        const mids=all.map(x=>{ const r=x.getBoundingClientRect(); return r.top+r.height/2; });
-        t=mids.filter(m=>m<y).length; if (t>from) t-=1; to=Math.max(0,Math.min(all.length-1,t)); mark();
-        const box=ol.getBoundingClientRect(); if (y<box.top+30) window.scrollBy(0,-12); else if (y>window.innerHeight-30) window.scrollBy(0,12); };
-      const up=()=>{ window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",up); window.removeEventListener("pointercancel",up);
-        all.forEach(x=>x.classList.remove("drop-before","drop-after","dragging")); document.body.classList.remove("grabbing");
-        if (to!==from) moveTo(id,to); };
-      window.addEventListener("pointermove",mv); window.addEventListener("pointerup",up); window.addEventListener("pointercancel",up);
-    };
+  /* drag a tile to a new place in the show: with the mouse grab it anywhere (after a few pixels of movement),
+     on touch screens grab the dotted handle; a floating copy follows the pointer and a line shows where it lands */
+  if (canWrite) ol.querySelectorAll(".item").forEach(li=>{
+    li.addEventListener("pointerdown", e=>{
+      if (e.button!==0) return;
+      const onGrip = !!e.target.closest(".grip");
+      if (!onGrip && (e.pointerType!=="mouse" || e.target.closest("button,input,select,textarea,a,.stbtn,.gapbtn"))) return;
+      startListDrag(e, li, ol, onGrip);
+    });
   });
+  ol.querySelectorAll(".grip").forEach(g=>g.onclick=e=>e.stopPropagation());
   { const lh=document.querySelector("#lsCol .list-head"); if (lh) lh.hidden = sorted().length>0; }
   ol.querySelectorAll("[data-stcyc]").forEach(b=>{ b.onclick=e=>{ e.stopPropagation(); const x=songs.find(q=>q.id===b.dataset.stcyc); if(!x) return;
     const i=STATUSES.findIndex(q=>q[0]===(x.status||"szkic")); const nx=STATUSES[(i+1)%STATUSES.length][0];
