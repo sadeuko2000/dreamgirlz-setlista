@@ -858,7 +858,7 @@ html.skin-nocny .tb-time{color:var(--fg)}
       <div class="row pr-ctl">
         <div class="pr-size" role="group" aria-label="Wielkość tekstu"><button id="prMinus" aria-label="Mniejszy tekst">A−</button><span id="prSize" class="mono">30</span><button id="prPlus" aria-label="Większy tekst">A+</button></div>
         <button class="btn pr-btn" id="prFollow" aria-pressed="true" title="Przewijaj razem z playheadem">Śledź</button>
-        <button class="btn pr-btn" id="prW" title="Szerokość panelu tekstu: połowa ekranu albo węższy panel 1,5/5 (timeline i edycja po 1,75/5)">⇔ ½</button>
+        <button class="btn pr-btn" id="prW" title="Zwęź panel tekstu (więcej miejsca na timeline i edycję) albo poszerz go z powrotem do połowy ekranu">→← Zwęź</button>
         <button class="btn pr-btn" id="prHc" aria-pressed="false" title="Wysoki kontrast: czarne tło, biały pogrubiony tekst, bieżąca linijka na żółto (np. dla słabego projektora)">◐ Kontrast</button>
         <button class="btn pr-btn" id="prFull" aria-pressed="false" title="Pełny ekran, np. na telewizor">⛶</button>
         <button class="btn pr-btn" id="prCollapse" aria-label="Zwiń panel tekstu" title="Zwiń do boku">⟩</button>
@@ -3096,7 +3096,7 @@ function savePr(){ try{ localStorage.setItem("prompter", JSON.stringify({size:pr
 function applyPr(){
   const vs=document.getElementById("viewSet"), ap=document.getElementById("prompter");
   vs.classList.toggle("p-collapsed", pr.collapsed); vs.classList.toggle("p-fifth", !!pr.fifth);
-  { const w=$("#prW"); if (w){ w.textContent = pr.fifth ? "⇔ 1,5/5" : "⇔ ½"; w.setAttribute("aria-pressed", String(!!pr.fifth)); } } ap.classList.toggle("collapsed", pr.collapsed); ap.classList.toggle("full", pr.full);
+  { const w=$("#prW"); if (w){ w.textContent = pr.fifth ? "↔ Poszerz" : "→← Zwęź"; w.setAttribute("aria-pressed", String(!!pr.fifth)); } } ap.classList.toggle("collapsed", pr.collapsed); ap.classList.toggle("full", pr.full);
   ap.style.setProperty("--pfs", pr.size+"px");
   $("#prSize").textContent = pr.size;
   $("#prFollow").setAttribute("aria-pressed", String(pr.follow));
