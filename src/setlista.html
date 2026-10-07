@@ -124,6 +124,15 @@ button{cursor:pointer}
 .item .st,.item .iw{display:none}
 .item .fn{grid-column:2/span 2;font-family:var(--f-mono);font-size:11px;color:color-mix(in srgb,var(--fg) 55%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .item .fn.none{font-style:italic;opacity:.7}
+.item .grip{position:absolute;left:0;top:0;bottom:0;width:16px;cursor:grab;touch-action:none;z-index:3;display:flex;align-items:center;justify-content:center;opacity:.35;transition:opacity .12s}
+.item .grip::before{content:"";width:6px;height:18px;background-image:radial-gradient(currentColor 1.2px,transparent 1.6px);background-size:3px 4.5px;color:var(--fg)}
+.item:hover .grip{opacity:.9}
+.item .grip:hover{background:rgba(255,255,255,.06)}
+.item.dragging{opacity:.45}
+.item.drop-before{box-shadow:inset 0 3px 0 var(--accent)}
+.item.drop-after{box-shadow:inset 0 -3px 0 var(--accent)}
+body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
+#lsCol .list-head[hidden]{display:none}
 .rail{display:none}
 .tbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-width:0}
 .tb-btn{width:40px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);display:grid;place-items:center;padding:0;flex:none}
@@ -1587,7 +1596,7 @@ function renderList(){
     const tint = tintOf(25), tintS = tintOf(40);
     return `<li class="item${isBreak?" brk":""}${acts.length===1?" one":""}${tint?" tint":""}${playingHere?" playing":""}" data-type="${isBreak?"break":stype(s)}" style="${acts.length||pl.length?`--c:${actVar(acts[0]||"all")};--vbar:${vbar};`:""}${tint?`--tint:${tint};--tint-s:${tintS};`:""}--h:${h}px" data-id="${s.id}" aria-current="${s.id===selId}" tabindex="0">
       ${wp?`<svg class="iw" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${wp}"/></svg>`:""}
-      <span class="no">${isBreak?"":n}<span class="st">${fmt(start)}</span></span>
+      ${canWrite?`<span class="grip" data-grip="${s.id}" title="Chwyć i przeciągnij, żeby zmienić kolejność" aria-hidden="true"></span>`:""}<span class="no">${isBreak?"":n}<span class="st">${fmt(start)}</span></span>
       <span class="t" title="${esc(typeName(stype(s)))}">${icon(stype(s))}<b>${esc(s.title||"Bez tytułu")}</b></span>
       <span class="d">${len?fmt(len):"—"}</span>
       ${isBreak ? `<span class="c">przerwa</span>` : `<span class="c"><em>${esc(cast.map(n=>{ const k=actKey(n); return k?actName(k):n; }).join(", ")||"obsada nieustalona")}</em></span>`}
@@ -1611,6 +1620,27 @@ function renderList(){
     };
     li.onclick = go; li.onkeydown = e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
   });
+  /* drag a tile by its grip to a new place in the show */
+  ol.querySelectorAll("[data-grip]").forEach(g=>{
+    g.onclick=e=>e.stopPropagation();
+    g.onpointerdown=e=>{
+      e.preventDefault(); e.stopPropagation();
+      const li=g.closest(".item"), id=g.dataset.grip; const all=[...ol.querySelectorAll(".item")]; const from=all.indexOf(li);
+      li.classList.add("dragging"); document.body.classList.add("grabbing");
+      let to=from;
+      const mark=()=>{ all.forEach(x=>x.classList.remove("drop-before","drop-after")); if (to===from) return;
+        if (to<from) all[to].classList.add("drop-before"); else all[to].classList.add("drop-after"); };
+      const mv=ev=>{ const y=ev.clientY; let t;
+        const mids=all.map(x=>{ const r=x.getBoundingClientRect(); return r.top+r.height/2; });
+        t=mids.filter(m=>m<y).length; if (t>from) t-=1; to=Math.max(0,Math.min(all.length-1,t)); mark();
+        const box=ol.getBoundingClientRect(); if (y<box.top+30) window.scrollBy(0,-12); else if (y>window.innerHeight-30) window.scrollBy(0,12); };
+      const up=()=>{ window.removeEventListener("pointermove",mv); window.removeEventListener("pointerup",up); window.removeEventListener("pointercancel",up);
+        all.forEach(x=>x.classList.remove("drop-before","drop-after","dragging")); document.body.classList.remove("grabbing");
+        if (to!==from) moveTo(id,to); };
+      window.addEventListener("pointermove",mv); window.addEventListener("pointerup",up); window.addEventListener("pointercancel",up);
+    };
+  });
+  { const lh=document.querySelector("#lsCol .list-head"); if (lh) lh.hidden = sorted().length>0; }
   ol.querySelectorAll("[data-stcyc]").forEach(b=>{ b.onclick=e=>{ e.stopPropagation(); const x=songs.find(q=>q.id===b.dataset.stcyc); if(!x) return;
     const i=STATUSES.findIndex(q=>q[0]===(x.status||"szkic")); const nx=STATUSES[(i+1)%STATUSES.length][0];
     safeWrite(()=>db.doc("songs/"+x.id).update({status:nx})); }; b.onkeydown=e=>e.stopPropagation(); });
@@ -2028,6 +2058,14 @@ function wireDetail(s){
     });
     on("#uGo","click",()=>{ const f=d.querySelector("#uFile").files[0]; if(!f){ setProg("Najpierw wybierz plik audio.", true); return; } startUpload(s,f); });
   }
+}
+async function moveTo(id, to){
+  const items=sorted(); const from=items.findIndex(x=>x.id===id); if (from<0) return;
+  to=Math.max(0, Math.min(items.length-1, to)); if (to===from) return;
+  const arr=items.slice(); const [it]=arr.splice(from,1); arr.splice(to,0,it);
+  arr.forEach((x,k)=>{ if (x.order!==k) x.order=k; });            // show at once; the saves follow
+  renderAll();
+  for (let k=0;k<arr.length;k++){ const x=arr[k]; await safeWrite(()=>db.doc("songs/"+x.id).update({order:k})); }
 }
 async function move(s,dir){
   const items=sorted(); const i=items.findIndex(x=>x.id===s.id); const o=items[i+dir]; if(!o) return;
