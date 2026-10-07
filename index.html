@@ -779,7 +779,6 @@ html.skin-nocny .tb-time{color:var(--fg)}
     </div>
     <div class="stats">
       <div class="stat"><span class="lbl">Cały spektakl</span><b id="stShow">0:00</b></div>
-      <div class="skin-sw" role="group" aria-label="Skórka"><button data-skin="studio" aria-pressed="true" title="Skórka Studio">Studio</button><button data-skin="nocny" aria-pressed="false" title="Skórka Nocny: stonowane kolory, ostre krawędzie, Space Grotesk">Nocny</button></div>
     </div>
   </header>
   <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
@@ -3077,7 +3076,7 @@ const CUE_CATS = [
 const CUE_LEN = 10;
 const CUE_COL_NOCNY = {kostium:"#D9A45C", scena:"#8DAE6A", swiatlo:"#D9C35A", dzwiek:"#72B6C8", rekwizyt:"#B8A07E", inne:"#9A9CA2"};
 const CUE_COL_BASE = Object.fromEntries(CUE_CATS.map(c=>[c[0], c[2]]));
-let skin = "studio"; try { const k=localStorage.getItem("skin"); if (k==="nocny") skin=k; } catch {}
+let skin = "studio";   // one look only (the Nocny skin switch was removed on request)
 function applySkin(){
   document.documentElement.classList.toggle("skin-nocny", skin==="nocny");
   CUE_CATS.forEach(c=>{ c[2] = skin==="nocny" ? (CUE_COL_NOCNY[c[0]]||c[2]) : CUE_COL_BASE[c[0]]; });
