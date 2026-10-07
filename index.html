@@ -86,6 +86,8 @@ button{cursor:pointer}
 .blk.one .bn,.blk.one .bf,.blk.one .bd{color:rgba(0,0,0,.62)}
 .blk.one .bw{fill:#000;opacity:.16}
 .tl-scroll{background:var(--sunk);border-radius:6px;padding:4px}
+.tl-panel{position:relative}
+.tl-panel>#tFit{position:absolute;top:14px;right:20px;z-index:7;padding:2px 8px;font-size:11px;background:var(--sunk);box-shadow:0 0 0 4px var(--sunk)}
 
 .blk .bn{display:inline-flex;align-items:center;gap:4px}
 .blk .bn .dot{width:6px;height:6px}
@@ -848,11 +850,11 @@ html.skin-nocny .tb-time{color:var(--fg)}
     <button class="btn ghost tb-loop" id="tLoop" hidden title="Wyłącz pętlę"></button>
     <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
     <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
-    <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
   </div>
   <div id="banner" class="banner" hidden></div>
 
   <section class="tl-panel" aria-label="Oś spektaklu">
+    <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl" id="tl">
         <div class="tl-track" id="tlTrack"></div>
