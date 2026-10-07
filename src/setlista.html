@@ -1729,16 +1729,6 @@ function renderDetail(){
         <span class="hint mono">gra ${fmt(vLen(pv))} z ${fmt(pv.duration)}</span>
         ${vTrimmed(pv)?`<button class="btn ghost" id="tmReset">Cały plik</button>`:""}
       </div>`:""}
-      ${ro?"":`
-      <div class="addcue">
-        <label class="field w-time"><span class="lbl">Czas</span><input id="cT" data-keep class="in mono" placeholder="0:00"></label>
-        <label class="field"><span class="lbl">Rodzaj</span><select id="cK" data-keep class="in">${KINDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></label>
-        <label class="field" id="cActWrap" hidden><span class="lbl">Kto</span><select id="cA" data-keep class="in">${ACT.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}<option value="all">Wszyscy</option></select></label>
-        <label class="field w-len" id="cLenWrap"><span class="lbl">Pauza (s)</span><input id="cL" data-keep class="in mono" placeholder="np. 8"></label>
-        <label class="field w-lbl"><span class="lbl">Opis</span><input id="cD" data-keep class="in" placeholder="np. dialog Ani przed refrenem"></label>
-        <button class="btn" id="cNow" type="button">Teraz</button>
-        <button class="btn primary" id="cAdd" type="button">Dodaj znacznik</button>
-      </div>`}
       ${ms.length?`<div class="tw"><table>
         <thead><tr><th class="lbl">Czas</th><th class="lbl">Rodzaj</th><th class="lbl">Kto</th><th class="lbl">Opis</th><th class="lbl">Pauza</th><th></th></tr></thead>
         <tbody>${ms.map(m=>`<tr>
@@ -1749,7 +1739,7 @@ function renderDetail(){
           <td class="mono">${m.kind==="pauza"&&m.len?fmt(m.len):""}</td>
           <td style="text-align:right">${ro?"":`<button class="btn ghost" data-delm="${m.id}" aria-label="Usuń znacznik">Usuń</button>`}</td>
         </tr>`).join("")}</tbody></table></div>
-        ${pauseSum(s.id)?`<div class="hint">Z pauzami numer trwa na scenie <b class="mono">${fmt(itemLen(s))}</b>.</div>`:""}`:`<div class="hint">Znaczniki (pauzy, wejścia, uwagi) pojawią się na przebiegu i w tabeli.</div>`}
+        ${pauseSum(s.id)?`<div class="hint">Z pauzami numer trwa na scenie <b class="mono">${fmt(itemLen(s))}</b>.</div>`:""}`:""}
     </div>
 
     <div class="panel">
