@@ -143,6 +143,10 @@ body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
 .top .tbar .tb-now{display:none}
 .hdr-right{display:flex;align-items:center;justify-content:flex-end;gap:16px;min-width:0}
 .hdr-right .files{flex:none}
+.hdr-right .files .sp{display:none}
+header.top .hdr-right>.files{flex:0 0 auto;width:auto}
+@media (max-width:1250px){ .hdr-right{gap:6px} .hdr-right .tb-off .ol{display:none} .hdr-right .tb-off.busy .ol,.hdr-right .tb-off.part .ol{display:inline} }
+.hdr-right .tb-off{flex:none;font-size:12px;padding:4px 10px}
 @media (max-width:1500px){ .hdr-right .stat .lbl{display:none} }
 .hdr-right .stats{flex:none;flex-wrap:nowrap;align-items:center}
 @media (min-width:821px){
@@ -711,7 +715,6 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .tb-addl{margin-left:8px;flex:none}
 #tCue,#tFb,.tb-addl{display:none!important}   /* add buttons hidden on request (events/notes can still be added in their own tabs) */
 .tbar .tb-cue{white-space:nowrap;flex:none}
-#tOff{display:none!important}   /* offline preparation removed from view on request */
 .addbar .btn{white-space:nowrap;flex:none}
 .addbar .up-lbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
 .addbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 12px;min-height:44px;box-sizing:border-box;min-width:0}
@@ -858,9 +861,9 @@ html.skin-nocny .tb-time{color:var(--fg)}
       <div class="tb-now" id="tNow"><b id="tName">—</b><span id="tSub"></span></div>
       <button class="btn ghost tb-loop" id="tLoop" hidden title="Wyłącz pętlę"></button>
       <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
-      <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
     </div>
     <div class="hdr-right">
+    <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
     <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
     <div class="stats">
       <div class="stat"><span class="lbl">Cały spektakl</span><b id="stShow">0:00</b></div>
@@ -1242,14 +1245,14 @@ function updOffline(){
   const known=as.every(a=>size(a)!=null), total=as.reduce((t,a)=>t+(size(a)||0),0);
   const got=as.reduce((t,a)=>t+(off.urls.has(a)?(off.bytes.get(a)||0):a===off.cur?off.curBytes:0),0);
   const totTxt = total ? (known?"":"~")+mb(total) : "";
-  let txt, p=0, cls="";
-  if (!n){ txt="⤓ Offline · brak nagrań"; }
-  else if (off.busy){ p = total ? got/total : have/n; txt=`⤓ Pobieram ${Math.min(have+1,n)}/${n} · ${mb(got)}${totTxt?" / "+totTxt:""}`; cls="busy"; }
-  else if (have===n){ txt=`✓ Offline gotowe · ${n} ${n===1?"utwór":n<5?"utwory":"utworów"} · ${mb(got)}`; p=1; cls="ok"; }
-  else if (have>0){ txt=`⤓ Offline ${have}/${n} · dociągnij resztę${totTxt?" ("+totTxt+")":""}`; p=have/n; cls="part"; }
-  else { txt=`⤓ Przygotuj offline${totTxt?" · "+totTxt:""}`; }
-  if (off.err && !off.busy) txt+=` · ${off.err} nie pobrano`;
-  b.textContent=txt; b.style.setProperty("--p", (p*100).toFixed(1)+"%"); b.className="btn tb-cue tb-off "+cls; b.disabled=off.busy||!n;
+  let txt, tip, p=0, cls="";
+  if (!n){ txt="⤓|Offline"; tip="Brak nagrań do pobrania"; }
+  else if (off.busy){ p = total ? got/total : have/n; txt=`⤓|${Math.min(have+1,n)}/${n}`; tip=`Pobieram ${Math.min(have+1,n)}/${n} · ${mb(got)}${totTxt?" / "+totTxt:""}`; cls="busy"; }
+  else if (have===n){ txt="✓|Offline"; tip=`Gotowe: wszystkie ${n} nagrania są w pamięci przeglądarki (${mb(got)}). Spektakl gra bez internetu, dopóki ta karta jest otwarta.`; p=1; cls="ok"; }
+  else if (have>0){ txt=`⤓|${have}/${n}`; tip=`Pobrano ${have}/${n} — kliknij, żeby pobrać resztę${totTxt?" ("+totTxt+")":""}`; p=have/n; cls="part"; }
+  else { txt="⤓|Offline"; tip=`Pobierz wszystkie nagrania do pamięci przeglądarki${totTxt?" ("+totTxt+")":""}, żeby spektakl grał bez internetu (dopóki karta jest otwarta)`; }
+  if (off.err && !off.busy){ txt=`⚠|${have}/${n}`; tip+=` · ${off.err} nie udało się pobrać — kliknij, żeby spróbować jeszcze raz`; cls="part"; }
+  const [ic,lb]=txt.split("|"); b.innerHTML=`<span class="oi">${ic}</span> <span class="ol">${lb}</span>`; b.title=tip; b.setAttribute("aria-label", tip); b.style.setProperty("--p", (p*100).toFixed(1)+"%"); b.className="btn tb-cue tb-off "+cls; b.disabled=off.busy||!n;
   if (!off.busy) offSizes();
 }
 document.getElementById("tOff").onclick=()=>offPrepare();
