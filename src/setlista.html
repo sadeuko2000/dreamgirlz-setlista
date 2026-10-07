@@ -591,6 +591,7 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 .banner.moved{background:var(--accent);color:var(--accent-fg);font-size:15px}.banner.moved a{color:inherit;font-weight:700}
 .relink{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--spot-soft)}
 .relink .hint{flex:1 1 220px}
+.top .files{grid-column:1/-1;flex-basis:100%;background:transparent;border-radius:0;padding:8px 0 2px;border-top:1px solid var(--line);margin-top:2px}
 .files{background:var(--surface);border-radius:var(--r);padding:8px 14px;display:flex;flex-direction:column;gap:8px}
 .files-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px}
 .files-h b{font-size:13px;letter-spacing:.02em}
@@ -778,8 +779,8 @@ html.skin-nocny .tb-time{color:var(--fg)}
     <div class="stats">
       <div class="stat"><span class="lbl">Cały spektakl</span><b id="stShow">0:00</b></div>
     </div>
+    <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
   </header>
-  <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
   <input type="file" id="fileOne" accept="audio/*,.mp3,.wav,.m4a,.aif,.aiff,.flac,.ogg" hidden>
   <div id="viewSet" class="vs">
   <div class="vs-main">
