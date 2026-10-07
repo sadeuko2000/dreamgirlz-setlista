@@ -140,6 +140,19 @@ button{cursor:pointer}
 .item.drop-after{box-shadow:inset 0 -3px 0 var(--accent)}
 body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
 #lsCol .list-head[hidden]{display:none}
+/* transport lives in the header row: tabs | play stop time | files | logout + show length */
+.top .tbar{background:transparent;border:0;padding:0;border-radius:0;gap:8px}
+.top .tbar .tb-btn{width:36px;height:30px}
+.top .tbar .tb-time{font-size:20px}
+.top .tbar .tb-now{display:none}
+@media (min-width:821px){
+  header.top{grid-template-columns:auto auto minmax(0,1fr) auto}
+  header.top .vsw{grid-column:1;grid-row:1}
+  header.top .tbar{grid-column:2;grid-row:1}
+  header.top .files{grid-column:3;grid-row:1}
+  header.top .stats{grid-column:4;grid-row:1}
+}
+@media (max-width:1500px){ header.top .files-h>b, header.top .files-h .fc:not(.ok):not(.miss){display:none} }
 .rail{display:none}
 .tbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-width:0}
 .tb-btn{width:40px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);display:grid;place-items:center;padding:0;flex:none}
@@ -599,7 +612,7 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 @media (min-width:821px){
   .top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
   .top .vsw{grid-column:2;grid-row:1;justify-self:center}
-  .top>div:not(.vsw):not(.stats){grid-column:1;grid-row:1}
+  .top>div:not(.vsw):not(.stats):not(.tbar){grid-column:1;grid-row:1}
   .top .stats{grid-column:3;grid-row:1;justify-self:end}
 }
 /* edit panel column with fold-to-strip, mirroring the lyrics panel */
@@ -621,7 +634,7 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 .relink .hint{flex:1 1 220px}
 .top .files{grid-column:1/-1;flex-basis:100%;background:transparent;border-radius:0;padding:8px 0 2px;border-top:1px solid var(--line);margin-top:2px}
 /* one-row header: tabs | files status | logout + show length (show name and the file list toggle hidden on request) */
-.top>div:not(.vsw):not(.stats){display:none!important}
+.top>div:not(.vsw):not(.stats):not(.tbar){display:none!important}
 .top #filesTog,.top .files-grid{display:none!important}
 .top .files{border-top:0;margin:0;padding:0;min-width:0}
 .top .files-h{flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
@@ -831,6 +844,18 @@ html.skin-nocny .tb-time{color:var(--fg)}
     <div style="flex:1 1 320px;min-width:0">
       <input id="showName" class="show-name" value="Musical" aria-label="Nazwa spektaklu">
     </div>
+    <div class="tbar" id="tbar" role="group" aria-label="Transport">
+      <button class="tb-btn tb-play" id="tPlay" aria-label="Play (spacja)" title="Play: od znacznika startu (spacja)"><svg viewBox="0 0 16 16"><path d="M4 2.5v11l9.5-5.5z"/></svg></button>
+      <button class="tb-btn tb-stop" id="tStop" aria-label="Stop" title="Stop: wraca do znacznika startu; drugi raz na początek"><svg viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9"/></svg></button>
+      <div class="tb-time mono" id="tTime">0:00.0</div>
+      <span class="lbl tb-addl" title="Dodaje w miejscu playheada">Dodaj:</span>
+      <button class="btn tb-cue" id="tCue" title="Dodaj wydarzenie (kostium, scenografia, światło…) w miejscu playheada">+ Wydarzenie</button>
+      <button class="btn tb-cue" id="tFb" title="Dodaj uwagę (np. „za mało czasu”) w miejscu playheada">+ Uwaga</button>
+      <div class="tb-now" id="tNow"><b id="tName">—</b><span id="tSub"></span></div>
+      <button class="btn ghost tb-loop" id="tLoop" hidden title="Wyłącz pętlę"></button>
+      <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
+      <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
+    </div>
     <div class="stats">
       <div class="stat"><span class="lbl">Cały spektakl</span><b id="stShow">0:00</b></div>
     </div>
@@ -839,18 +864,6 @@ html.skin-nocny .tb-time{color:var(--fg)}
   <input type="file" id="fileOne" accept="audio/*,.mp3,.wav,.m4a,.aif,.aiff,.flac,.ogg" hidden>
   <div id="viewSet" class="vs">
   <div class="vs-main">
-  <div class="tbar" id="tbar" role="group" aria-label="Transport">
-    <button class="tb-btn tb-play" id="tPlay" aria-label="Play (spacja)" title="Play: od znacznika startu (spacja)"><svg viewBox="0 0 16 16"><path d="M4 2.5v11l9.5-5.5z"/></svg></button>
-    <button class="tb-btn tb-stop" id="tStop" aria-label="Stop" title="Stop: wraca do znacznika startu; drugi raz na początek"><svg viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9"/></svg></button>
-    <div class="tb-time mono" id="tTime">0:00.0</div>
-    <span class="lbl tb-addl" title="Dodaje w miejscu playheada">Dodaj:</span>
-    <button class="btn tb-cue" id="tCue" title="Dodaj wydarzenie (kostium, scenografia, światło…) w miejscu playheada">+ Wydarzenie</button>
-    <button class="btn tb-cue" id="tFb" title="Dodaj uwagę (np. „za mało czasu”) w miejscu playheada">+ Uwaga</button>
-    <div class="tb-now" id="tNow"><b id="tName">—</b><span id="tSub"></span></div>
-    <button class="btn ghost tb-loop" id="tLoop" hidden title="Wyłącz pętlę"></button>
-    <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
-    <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
-  </div>
   <div id="banner" class="banner" hidden></div>
 
   <section class="tl-panel" aria-label="Oś spektaklu">
