@@ -650,7 +650,10 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .arch-t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--muted) 50%,transparent)}
 .arch-t:hover{color:var(--fg)}
 .arch-list .btn{font-size:12px;padding:4px 10px}
-.addbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 12px;height:44px;min-width:0}
+.addbar .add-sp{flex:1}
+.addbar .btn{white-space:nowrap;flex:none}
+.addbar .up-lbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
+.addbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 12px;min-height:44px;box-sizing:border-box;min-width:0}
 /* cue-line strip: the spoken line that starts the next number */
 .sigbar{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-height:58px;box-sizing:border-box;min-width:0}
 .sigbar:empty{display:none}
@@ -785,8 +788,6 @@ html.skin-nocny .tb-time{color:var(--fg)}
     <button class="tb-btn tb-stop" id="tStop" aria-label="Stop" title="Stop: wraca do znacznika startu; drugi raz na początek"><svg viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9"/></svg></button>
     <div class="tb-time mono" id="tTime">0:00.0</div>
     <div class="tb-now" id="tNow"><b id="tName">—</b><span id="tSub"></span></div>
-    <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
-    <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
     <button class="btn ghost tb-loop" id="tLoop" hidden title="Wyłącz pętlę"></button>
     <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
   </div>
@@ -794,6 +795,9 @@ html.skin-nocny .tb-time{color:var(--fg)}
     <span class="lbl up-lbl">Dodaj w miejscu playheada</span>
     <button class="btn tb-cue" id="tCue" title="Dodaj wydarzenie (kostium, scenografia, światło…) w miejscu playheada">+ Wydarzenie</button>
     <button class="btn tb-cue" id="tFb" title="Dodaj uwagę (np. „za mało czasu”) w miejscu playheada">+ Uwaga</button>
+    <span class="add-sp"></span>
+    <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
+    <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
   </div>
   <div id="banner" class="banner" hidden></div>
 
