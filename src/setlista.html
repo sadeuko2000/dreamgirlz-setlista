@@ -141,13 +141,17 @@ body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
 .top .tbar .tb-btn{width:36px;height:30px}
 .top .tbar .tb-time{font-size:20px}
 .top .tbar .tb-now{display:none}
+.hdr-right{display:flex;align-items:center;justify-content:flex-end;gap:16px;min-width:0}
+.hdr-right .files{flex:none}
+@media (max-width:1500px){ .hdr-right .stat .lbl{display:none} }
+.hdr-right .stats{flex:none;flex-wrap:nowrap;align-items:center}
 @media (min-width:821px){
-  header.top{grid-template-columns:auto auto minmax(0,1fr) auto}
-  header.top .vsw{grid-column:2;grid-row:1}
-  header.top .tbar{grid-column:1;grid-row:1}
-  header.top .files{grid-column:3;grid-row:1}
-  header.top .stats{grid-column:4;grid-row:1}
+  header.top{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+  header.top .tbar{grid-column:1;grid-row:1;justify-self:start}
+  header.top .vsw{grid-column:2;grid-row:1;justify-self:center}
+  header.top .hdr-right{grid-column:3;grid-row:1}
 }
+@media (max-width:820px){ .hdr-right{flex-wrap:wrap;justify-content:flex-start} }
 @media (max-width:1500px){ header.top .files-h>b, header.top .files-h .fc:not(.ok):not(.miss){display:none} }
 header.top .files-h>b, header.top .files-h>.fc{display:none!important}   /* file status hidden on request; loudness + "upload missing" stay */
 header.top .files-h .sp{flex:1}
@@ -610,7 +614,7 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 @media (min-width:821px){
   .top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
   .top .vsw{grid-column:2;grid-row:1;justify-self:center}
-  .top>div:not(.vsw):not(.stats):not(.tbar){grid-column:1;grid-row:1}
+  .top>div:not(.vsw):not(.stats):not(.tbar):not(.hdr-right){grid-column:1;grid-row:1}
   .top .stats{grid-column:3;grid-row:1;justify-self:end}
 }
 /* edit panel column with fold-to-strip, mirroring the lyrics panel */
@@ -632,7 +636,7 @@ a.btn{text-decoration:none;white-space:nowrap;color:inherit;display:inline-flex;
 .relink .hint{flex:1 1 220px}
 .top .files{grid-column:1/-1;flex-basis:100%;background:transparent;border-radius:0;padding:8px 0 2px;border-top:1px solid var(--line);margin-top:2px}
 /* one-row header: tabs | files status | logout + show length (show name and the file list toggle hidden on request) */
-.top>div:not(.vsw):not(.stats):not(.tbar){display:none!important}
+.top>div:not(.vsw):not(.stats):not(.tbar):not(.hdr-right){display:none!important}
 .top #filesTog,.top .files-grid{display:none!important}
 .top .files{border-top:0;margin:0;padding:0;min-width:0}
 .top .files-h{flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
@@ -856,10 +860,12 @@ html.skin-nocny .tb-time{color:var(--fg)}
       <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
       <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
     </div>
+    <div class="hdr-right">
+    <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
     <div class="stats">
       <div class="stat"><span class="lbl">Cały spektakl</span><b id="stShow">0:00</b></div>
     </div>
-    <section id="filesBar" class="files" hidden aria-label="Pliki nagrań"></section>
+    </div>
   </header>
   <input type="file" id="fileOne" accept="audio/*,.mp3,.wav,.m4a,.aif,.aiff,.flac,.ogg" hidden>
   <div id="viewSet" class="vs">
@@ -1284,7 +1290,7 @@ function renderRelink(){
     ${nWait||relink.checking?`<span class="fc">sprawdzam…</span>`:""}
     ${cnt("err")?`<span class="fc" title="Nie udało się sprawdzić: brak internetu albo serwer nie odpowiada">${cnt("err")} nie sprawdzono</span>`:""}
     ${relink.msg?`<span class="fmsg">${esc(relink.msg)}</span>`:`<span class="sp"></span>`}
-    <span class="fnorm" title="Głośniejsze nagrania są ściszane do wspólnego poziomu, cichsze zostają bez zmian (np. ambient pod poezję)"><button class="btn ghost" id="normTog" aria-pressed="${normOn()}">${normOn()?"⇅ Głośność wyrównana":"⇅ Głośność oryginalna"}</button>${normOn()?`<select id="normTgt" class="in" aria-label="Docelowy poziom">${NORM_TARGETS.map(t=>`<option value="${t}" ${t===normTarget()?"selected":""}>${t} LUFS</option>`).join("")}</select>`:""}${loud.busy?`<span class="fc">mierzę głośność…</span>`:""}</span>
+    <span class="fnorm" title="Głośniejsze nagrania są ściszane do wspólnego poziomu, cichsze zostają bez zmian (np. ambient pod poezję)"><button class="btn ghost" id="normTog" aria-pressed="${normOn()}">${normOn()?"⇅ Wyrównana":"⇅ Oryginalna"}</button>${normOn()?`<select id="normTgt" class="in" aria-label="Docelowy poziom">${NORM_TARGETS.map(t=>`<option value="${t}" ${t===normTarget()?"selected":""}>${t} LUFS</option>`).join("")}</select>`:""}${loud.busy?`<span class="fc">mierzę głośność…</span>`:""}</span>
     ${up && missAll.length?`<button class="btn primary" id="relinkGo" title="Wskaż folder z oryginalnymi plikami, brakujące dopasuję po nazwie pliku">Wgraj brakujące z folderu</button>`:""}
     <button class="btn ghost" id="filesTog" aria-expanded="${open}">${open?"Zwiń ▴":"Pokaż listę ▾"}</button></div>`;
   const lab = {ok:"wgrane", miss:"brak pliku", none:"bez nagrania", wait:"…", err:"nie sprawdzono"};
