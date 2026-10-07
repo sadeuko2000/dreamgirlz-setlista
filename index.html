@@ -322,7 +322,7 @@ html.skin-nocny{--hd:#050506}
 /* prompter (lyrics for the cast) */
 #viewSet{display:grid;grid-template-columns:minmax(0,1fr) var(--pw,minmax(0,1fr));gap:18px;align-items:start}
 #viewSet.p-collapsed{--pw:44px}
-#viewSet.p-fifth:not(.p-collapsed){grid-template-columns:minmax(0,4fr) minmax(0,1fr)}
+#viewSet.p-fifth:not(.p-collapsed){grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
 #viewSet[hidden],.prompter [hidden]{display:none!important}
 .vs-main{display:flex;flex-direction:column;gap:18px;min-width:0}
 .prompter{position:sticky;top:12px;height:calc(100vh - 24px);display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r);min-width:0;overflow:hidden}
@@ -863,7 +863,7 @@ html.skin-nocny .tb-time{color:var(--fg)}
       <div class="row pr-ctl">
         <div class="pr-size" role="group" aria-label="Wielkość tekstu"><button id="prMinus" aria-label="Mniejszy tekst">A−</button><span id="prSize" class="mono">30</span><button id="prPlus" aria-label="Większy tekst">A+</button></div>
         <button class="btn pr-btn" id="prFollow" aria-pressed="true" title="Przewijaj razem z playheadem">Śledź</button>
-        <button class="btn pr-btn" id="prW" title="Szerokość panelu tekstu: połowa ekranu albo wąski pasek 1/5 (timeline i edycja po 2/5)">⇔ ½</button>
+        <button class="btn pr-btn" id="prW" title="Szerokość panelu tekstu: połowa ekranu albo węższy panel 1,5/5 (timeline i edycja po 1,75/5)">⇔ ½</button>
         <button class="btn pr-btn" id="prHc" aria-pressed="false" title="Wysoki kontrast: czarne tło, biały pogrubiony tekst, bieżąca linijka na żółto (np. dla słabego projektora)">◐ Kontrast</button>
         <button class="btn pr-btn" id="prFull" aria-pressed="false" title="Pełny ekran, np. na telewizor">⛶</button>
         <button class="btn pr-btn" id="prCollapse" aria-label="Zwiń panel tekstu" title="Zwiń do boku">⟩</button>
@@ -3345,7 +3345,7 @@ function savePr(){ try{ localStorage.setItem("prompter", JSON.stringify({size:pr
 function applyPr(){
   const vs=document.getElementById("viewSet"), ap=document.getElementById("prompter");
   vs.classList.toggle("p-collapsed", pr.collapsed); vs.classList.toggle("p-fifth", !!pr.fifth);
-  { const w=$("#prW"); if (w){ w.textContent = pr.fifth ? "⇔ ⅕" : "⇔ ½"; w.setAttribute("aria-pressed", String(!!pr.fifth)); } } ap.classList.toggle("collapsed", pr.collapsed); ap.classList.toggle("full", pr.full);
+  { const w=$("#prW"); if (w){ w.textContent = pr.fifth ? "⇔ 1,5/5" : "⇔ ½"; w.setAttribute("aria-pressed", String(!!pr.fifth)); } } ap.classList.toggle("collapsed", pr.collapsed); ap.classList.toggle("full", pr.full);
   ap.style.setProperty("--pfs", pr.size+"px");
   $("#prSize").textContent = pr.size;
   $("#prFollow").setAttribute("aria-pressed", String(pr.follow));
