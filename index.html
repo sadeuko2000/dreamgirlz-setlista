@@ -281,6 +281,9 @@ tr:last-child td{border-bottom:0}
 .blk .btop .bstop{flex:none;color:#F1F2F4;font-size:11px}
 .blk .bstopbar{position:absolute;right:0;top:0;bottom:0;width:5px;background:#F1F2F4;box-shadow:-1px 0 0 rgba(0,0,0,.5);z-index:4;pointer-events:none}
 .blk .bstopbar.off{opacity:.3}
+.xchip{position:absolute;bottom:3px;transform:translateX(-50%);z-index:6;font-family:var(--f-mono);font-size:10px;line-height:1;padding:3px 4px;border-radius:4px;background:var(--sunk);color:var(--muted);border:1px solid var(--line);pointer-events:none;white-space:nowrap}
+.xchip.set{background:#151618;color:#F1F2F4;border-color:var(--accent)}
+.xchip.hold{color:var(--accent)}
 .blk .bopen{position:absolute;right:0;top:26px;bottom:0;width:14px;background:repeating-linear-gradient(90deg,rgba(0,0,0,.35) 0 2px,transparent 2px 5px);z-index:4;pointer-events:none}
 .tl-over{position:absolute;top:0;height:100%;min-width:64px;border:1px dashed var(--accent);border-left:2px solid var(--accent);border-radius:0 6px 6px 0;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 22%,transparent) 0 6px,color-mix(in srgb,var(--accent) 8%,transparent) 6px 12px);color:var(--fg);font-family:var(--f-mono);font-size:13px;font-weight:600;display:flex;align-items:flex-start;padding:30px 8px 0;white-space:nowrap;z-index:5;pointer-events:none;animation:overPulse 1.6s ease-in-out infinite}
 @keyframes overPulse{50%{border-color:color-mix(in srgb,var(--accent) 40%,transparent)}}
@@ -677,6 +680,8 @@ html.skin-nocny #addBtns .btn{font-size:12px;letter-spacing:0;padding:6px 7px}
 .gohold:disabled{opacity:.4;cursor:default}
 .go-fade{flex:none;display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:0 6px}
 .go-fade .lbl{margin-right:6px;font-size:10px}
+.go-from{font-size:11px;color:var(--muted);margin-right:6px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go-from b{color:var(--fg);font-weight:600}
 .go-div{width:1px;align-self:stretch;margin:8px 4px;background:var(--line)}
 .go-fade button{border:0;background:transparent;color:var(--muted);padding:6px 8px;border-radius:6px;font-family:var(--f-mono);font-size:12px}
 .go-fade button[data-xm]{font-family:var(--f-body);font-size:12px}
@@ -812,7 +817,7 @@ html.skin-nocny .tb-time{color:var(--fg)}
   <div class="gobar" id="goBar" hidden>
     <button class="gobtn" id="goNext" title="Przejście do następnego numeru: obecny wycisza się, następny startuje od razu (klawisz N)"><span class="go-k">▶▶ Przejdź do</span><b id="goName">—</b><span class="go-sub" id="goSub"></span></button>
     <button class="gohold" id="goHold" title="Obecny utwór wycisza się, playhead staje na początku następnego numeru i czeka, aż go odpalisz"><b>↘ Wycisz i czekaj</b><span id="goHoldSub"></span></button>
-    <div class="go-fade" role="group" aria-label="Rodzaj i czas przejścia"><button data-xm="dj" title="Jak fader DJ-ski: poprzedni cichnie, a następny w tym samym czasie się pojawia">✕ Crossfade</button><button data-xm="out" title="Poprzedni cichnie, następny startuje od razu w pełnej głośności">↘ Wycisz</button><span class="go-div"></span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button><button data-xf="10">10 s</button></div>
+    <div class="go-fade" role="group" aria-label="Rodzaj i czas przejścia"><span class="go-from" id="goFrom"></span><button data-xm="dj" title="Jak fader DJ-ski: poprzedni cichnie, a następny w tym samym czasie się pojawia">✕ Crossfade</button><button data-xm="out" title="Poprzedni cichnie, następny startuje od razu w pełnej głośności">↘ Wycisz</button><button data-xm="hold" title="Poprzedni cichnie, następny czeka na Start">⏸ Wycisz i czekaj</button><span class="go-div"></span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button><button data-xf="10">10 s</button></div>
   </div>
   <div class="sigbar" id="sigBar" aria-label="Sygnał startu następnego utworu" aria-live="polite"></div>
   <div class="upbar" id="upBar" aria-label="Nadchodzące wydarzenia"><span class="lbl up-lbl">Za chwilę</span><div class="up-list" id="upList"></div></div>
@@ -1587,7 +1592,12 @@ function renderTimeline(){
     return `<button class="blk${isBreak?" brk":""}${acts.length===1&&!hasParts&&!pale?" one":""}${hasParts?" parts":""}${pale?" pale":""}${L.real?"":" nolen"}${s.id===selId?" sel":""}${dim?" dim":""}" data-id="${s.id}" data-type="${isBreak?"break":stype(s)}"
       style="left:calc(${left}% + 1px);width:calc(${width}% - 2px);${cvar}${bar?`--bar:${bar};`:""}${pale?`--fill:${fill};`:""}" title="${esc(typeName(stype(s)))} · ${esc((isBreak?"":n+". ")+(s.title||""))}${cvf?" · plik: "+esc(cvf):""} · ${L.real?fmt(L.real):"brak nagrania"}">
       ${waveSvg}${ps}${pt}${!isBreak&&s.after==="stop"?`<span class="bstopbar${honorStops?"":" off"}"></span>`:""}${!isBreak&&isOpen(s)?`<span class="bopen"></span>`:""}<span class="btop"><span class="bn">${icon(stype(s))}${isBreak?"":n}${isBreak?"":`<span class="dot s-${esc(s.status||"szkic")}"></span>`}</span><span class="bt">${esc(s.title||"Bez tytułu")}</span>${!isBreak&&s.after==="stop"?`<span class="bstop" title="Po tym numerze playhead się zatrzymuje">⏸</span>`:""}${!isBreak&&isOpen(s)?`<span class="bstop" title="Otwarty koniec: muzyka gra dalej, aż naciśniesz „Przejdź do”">∞</span>`:""}<span class="bd">${L.real?fmt(L.real):"—"}</span></span>${isBreak?"":(cvf?`<span class="bf" title="${esc(cvf)}">${esc(cvf)}</span>`:`<span class="bf none">brak pliku</span>`)}</button>`;
-  }).join("");
+  }).join("") + (()=>{
+    // transition into the next number, drawn on the seam between the two clips
+    let out=""; const real=items.map((s,i)=>({s,i})).filter(o=>o.s.kind!=="break");
+    for (let j=0;j<real.length-1;j++){ const {s,i}=real[j]; const L=tlLayout[i]; const t=transOf(s); if (!t.set) continue;
+      out+=`<span class="xchip${t.set?" set":""}${t.type==="hold"?" hold":""}" style="left:${(L.start+L.len)/total*100}%" title="Przejście z „${esc(s.title||"")}” do następnego: ${XNAME[t.type]}, ${t.sec} s${t.set?"":" (domyślne)"}">${XICON[t.type]}${t.sec}</span>`; }
+    return out; })();
   // hide labels on blocks too narrow to hold them
   requestAnimationFrame(()=>track.querySelectorAll(".blk").forEach(b=>{ b.classList.toggle("tiny", b.clientWidth<46); b.classList.toggle("narrow", b.clientWidth<140); }));
   const step = minutes<=12 ? 60 : minutes<=40 ? 300 : 600;
@@ -1925,6 +1935,9 @@ function renderDetail(){
         <div class="field" style="flex:0 0 auto"><span class="lbl">Status</span>
           <div class="seg" role="group" aria-label="Status">${STATUSES.map(([k,l])=>`<button data-st="${k}" aria-pressed="${(s.status||"szkic")===k}" ${ro?"disabled":""}><span class="dot s-${k}"></span>${l}</button>`).join("")}</div>
         </div>
+        <div class="field" style="flex:0 0 auto"><span class="lbl">Przejście do następnego (przycisk „Przejdź do”)</span>
+          ${(()=>{ const t=transOf(s); return `<div class="row" style="gap:6px"><div class="seg" role="group" aria-label="Rodzaj przejścia">${XTYPES.map(k=>`<button data-xt="${k}" aria-pressed="${t.set&&t.type===k}" ${ro?"disabled":""}>${XICON[k]} ${XNAME[k]}</button>`).join("")}</div><div class="seg" role="group" aria-label="Czas przejścia">${XSECS.map(k=>`<button data-xs="${k}" aria-pressed="${t.set&&t.sec===k}" ${ro?"disabled":""}>${k} s</button>`).join("")}</div>${t.set?"":`<span class="hint">teraz domyślne: ${XNAME[t.type]}, ${t.sec} s</span>`}</div>`; })()}
+        </div>
         <div class="field" style="flex:0 0 auto"><span class="lbl">Po zakończeniu</span>
           <div class="seg" role="group" aria-label="Po zakończeniu numeru"><button data-after="go" aria-pressed="${s.after!=="stop"&&!isOpen(s)}" ${ro?"disabled":""}>▶ Leci dalej</button><button data-after="stop" aria-pressed="${s.after==="stop"}" ${ro?"disabled":""}>⏸ Stop, czekaj</button>${canOpen(s)?`<button data-after="open" aria-pressed="${s.after==="open"}" ${ro?"disabled":""} title="Otwarty koniec: po końcu klipu numer trwa dalej (ambient gra w pętli, scena bez muzyki po prostu trwa), aż naciśniesz „Przejdź do”">∞ Otwarty koniec</button>`:""}</div>
         </div>
@@ -2130,6 +2143,8 @@ function wireDetail(s){
   const d=detailEl; const ref=()=>db.doc("songs/"+s.id);
   const on=(sel,ev,fn)=>{ const el=d.querySelector(sel); if(el) el.addEventListener(ev,fn); };
   on("#fTitle","change",e=>safeWrite(()=>ref().update({title:e.target.value.trim()||"Bez tytułu"})));
+  d.querySelectorAll("[data-xt]").forEach(b=>b.onclick=()=>{ const t=transOf(s); safeWrite(()=>ref().update({xType:b.dataset.xt, xSec:t.sec})); });
+  d.querySelectorAll("[data-xs]").forEach(b=>b.onclick=()=>{ const t=transOf(s); safeWrite(()=>ref().update({xType:t.type, xSec:+b.dataset.xs})); });
   d.querySelectorAll("[data-after]").forEach(b=>b.onclick=()=>safeWrite(()=>ref().update({after: b.dataset.after==="go" ? "" : b.dataset.after})));
   on("#fSig","change",e=>safeWrite(()=>ref().update({cueLine:e.target.value.trim()})));
   d.querySelectorAll("[data-sigby]").forEach(b=>b.onclick=()=>{ const k=b.dataset.sigby; safeWrite(()=>ref().update({cueBy: s.cueBy===k ? "" : k})); });
@@ -2468,7 +2483,17 @@ function stopSolo(){ if (tr.solo) tr.soloPos = audio.currentTime||0; tr.solo=nul
 
 /* "Przejdź do": the running number fades out over a few seconds on a second player while the next one starts at once */
 let xfade = 3; try{ const v=+localStorage.getItem("xfade"); if ([3,4,5,10].includes(v)) xfade=v; }catch{}
-let xmode = "dj"; try{ const v=localStorage.getItem("xmode"); if (v==="dj"||v==="out") xmode=v; }catch{}
+let xmode = "dj"; try{ const v=localStorage.getItem("xmode"); if (v==="dj"||v==="out"||v==="hold") xmode=v; }catch{}
+/* every number keeps its own way of passing into the next one (saved with the number, shared with the crew);
+   numbers without a saved choice use the default set in the bar */
+const XTYPES=["dj","out","hold"], XSECS=[3,4,5,10];
+const XICON={dj:"✕", out:"↘", hold:"⏸"}, XNAME={dj:"Crossfade", out:"Wycisz", hold:"Wycisz i czekaj"};
+function transOf(s){ return { type: XTYPES.includes(s?.xType) ? s.xType : xmode, sec: XSECS.includes(s?.xSec) ? s.xSec : xfade, set: !!(s && (XTYPES.includes(s.xType) || XSECS.includes(s.xSec))) }; }
+function fromSong(){
+  computeLayout(); if (!layout.length) return null;
+  const loc = locate(Math.min(tr.T, Math.max(0,layoutTotal-0.001))); if (!loc) return null;
+  return songs.find(x=>x.id===loc.L.id) || null;
+}
 let fadeIn = null;                                  // DJ crossfade: the incoming number rises while the old one falls
 function clearFadeIn(){ fadeIn=null; try{ audio.volume=gainOfVid(audio.dataset.vid); }catch{} }
 
@@ -2513,20 +2538,23 @@ function fadeTick(){
 }
 async function goNext(){
   const tg=goTarget(); if (!tg) return;
+  const t = transOf(tr.playing && !tr.solo ? fromSong() : null);
+  if (tr.playing && !tr.solo && t.type==="hold"){ goHold(t.sec); return; }
   if (tr.loop) tr.loop=null;
   const cross = tr.playing && !tr.solo && tr.seg?.type==="audio" && !audio.paused;
-  if (cross) releaseToFade(xfade);
-  if (cross && xmode==="dj"){ try{ audio.volume=0; }catch{} }
+  if (cross) releaseToFade(t.sec, t.type==="dj");
+  if (cross && t.type==="dj"){ try{ audio.volume=0; }catch{} }
   trSetPos(tg.L.start);
   if (!tr.playing || tr.solo) trPlay();
-  if (cross && xmode==="dj"){ fadeIn={sec:xfade, t0: (!audio.paused && audio.dataset.vid===tg.L.vid) ? performance.now() : 0, made:performance.now()}; fadeTick(); }
+  if (cross && t.type==="dj"){ fadeIn={sec:t.sec, t0: (!audio.paused && audio.dataset.vid===tg.L.vid) ? performance.now() : 0, made:performance.now()}; fadeTick(); }
   renderAll();
 }
 /* fade the running number out and park on the start of the next one: it waits for N / Play */
-async function goHold(){
+async function goHold(sec){
   if (!tr.playing || tr.solo) return;
+  if (typeof sec!=="number") sec = transOf(fromSong()).sec;
   const tg=goTarget(); if (tr.loop) tr.loop=null;
-  if (tr.seg?.type==="audio" && !audio.paused) releaseToFade(xfade, false);
+  if (tr.seg?.type==="audio" && !audio.paused) releaseToFade(sec, false);
   if (fadeIn) clearFadeIn();
   tr.playing=false; tr.over=null; internalPause(); cancelAnimationFrame(tr.raf);
   if (tg){ tr.marker=tg.L.start; tr.T=tg.L.start; tr.held=true; } else { tr.T=tr.marker; }
@@ -2540,21 +2568,40 @@ function updGo(force){
   const tg=goTarget(); let n=0, num=0; if (tg){ for (const L of layout){ const x=songs.find(q=>q.id===L.id); if (x && x.kind!=="break") n++; if (L.id===tg.L.id){ num=n; break; } } }
   const fading = tails.length>0;
   const over = tr.over && tr.playing ? Math.floor((performance.now()-tr.over.t0)/1000) : -1;
-  const key=(tg?tg.L.id+(tg.s.title||""):"-")+"|"+xfade+xmode+"|"+tr.playing+"|"+fading+"|"+over;
+  const fs = fromSong(), t = transOf(fs && fs.kind!=="break" ? fs : null);
+  const key=(tg?tg.L.id+(tg.s.title||""):"-")+"|"+(fs?fs.id:"")+t.type+t.sec+t.set+"|"+tr.playing+"|"+fading+"|"+over;
   if (!force && key===goKey) return; goKey=key;
   const b=document.getElementById("goNext"); b.disabled=!tg;
-  b.querySelector(".go-k").textContent = tr.playing ? "▶▶ Przejdź do" : "▶ Start";
+  b.querySelector(".go-k").textContent = !tr.playing ? "▶ Start" : t.type==="hold" ? "⏸ Wycisz → czekaj na" : "▶▶ Przejdź do";
   document.getElementById("goName").innerHTML = tg ? `${icon(stype(tg.s))} ${num}. ${esc(tg.s.title||"Bez tytułu")}` : "Nie ma już kolejnych numerów";
-  document.getElementById("goSub").textContent = fading ? (!tr.playing ? "wycisza się…" : xmode==="dj" ? "crossfade…" : "wyciszam poprzedni…") : over>=0 ? `∞ +${fmt(over)} · N` : tr.playing ? (xmode==="dj" ? `crossfade ${xfade} s · N` : `wyciszenie ${xfade} s · N`) : "klawisz N";
+  const how = t.type==="dj" ? `crossfade ${t.sec} s` : t.type==="out" ? `wyciszenie ${t.sec} s` : `wyciszenie ${t.sec} s, potem stoi`;
+  document.getElementById("goSub").textContent = fading ? (!tr.playing ? "wycisza się…" : "przejście…") : over>=0 ? `∞ +${fmt(over)} · N` : tr.playing ? `${how} · N` : "klawisz N";
   b.classList.toggle("over", over>=0);
   const h=document.getElementById("goHold"); h.disabled = !tr.playing || !!tr.solo;
-  document.getElementById("goHoldSub").textContent = `${xfade} s, potem stoi`;
-  bar.querySelectorAll("[data-xf]").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.xf===xfade)));
-  bar.querySelectorAll("[data-xm]").forEach(x=>x.setAttribute("aria-pressed", String(x.dataset.xm===xmode)));
+  document.getElementById("goHoldSub").textContent = `${t.sec} s, potem stoi`;
+  const fr=document.getElementById("goFrom");
+  if (fs && fs.kind!=="break"){ let k=0, nn=0; for (const L of layout){ const x=songs.find(q=>q.id===L.id); if (x && x.kind!=="break") k++; if (L.id===fs.id){ nn=k; break; } }
+    fr.innerHTML = `${t.set?"":"domyślnie · "}z <b>${nn}. ${esc(fs.title||"")}</b>`; fr.title = t.set ? "Przejście zapisane w tym numerze" : "Ten numer nie ma zapisanego przejścia: używane jest domyślne. Kliknij rodzaj albo czas, żeby je zapisać."; }
+  else { fr.textContent = "domyślne przejście"; fr.title=""; }
+  bar.querySelectorAll("[data-xf]").forEach(x=>x.setAttribute("aria-pressed", String(+x.dataset.xf===t.sec)));
+  bar.querySelectorAll("[data-xm]").forEach(x=>x.setAttribute("aria-pressed", String(x.dataset.xm===t.type)));
+}
+/* the bar edits the transition of the number that is playing (or where the playhead stands); it is saved with that number */
+function setTrans(patch){
+  const fs=fromSong();
+  if (fs && fs.kind!=="break" && canWrite){
+    const t=transOf(fs); const doc={xType: patch.xType ?? t.type, xSec: patch.xSec ?? t.sec};
+    fs.xType=doc.xType; fs.xSec=doc.xSec;                       // show it at once, the save follows
+    safeWrite(()=>db.doc("songs/"+fs.id).update(doc));
+  } else {
+    if (patch.xType){ xmode=patch.xType; try{ localStorage.setItem("xmode", xmode); }catch{} }
+    if (patch.xSec){ xfade=patch.xSec; try{ localStorage.setItem("xfade", String(xfade)); }catch{} }
+  }
+  updGo(true); renderTimeline?.();
 }
 document.getElementById("goNext").onclick=()=>goNext();
-document.querySelectorAll("#goBar [data-xm]").forEach(x=>x.onclick=()=>{ xmode=x.dataset.xm; try{ localStorage.setItem("xmode", xmode); }catch{} updGo(true); });
-document.querySelectorAll("#goBar [data-xf]").forEach(x=>x.onclick=()=>{ xfade=+x.dataset.xf; try{ localStorage.setItem("xfade", String(xfade)); }catch{} updGo(true); });
+document.querySelectorAll("#goBar [data-xm]").forEach(x=>x.onclick=()=>setTrans({xType:x.dataset.xm}));
+document.querySelectorAll("#goBar [data-xf]").forEach(x=>x.onclick=()=>setTrans({xSec:+x.dataset.xf}));
 document.addEventListener("keydown", e=>{
   if ((e.key!=="n" && e.key!=="N") || e.metaKey || e.ctrlKey || e.altKey || view!=="set") return;
   const t=e.target; if (t && (/INPUT|TEXTAREA|SELECT/.test(t.tagName) || t.isContentEditable)) return;
