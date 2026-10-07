@@ -792,7 +792,6 @@ html.skin-nocny .tb-time{color:var(--fg)}
     <div class="tb-time mono" id="tTime">0:00.0</div>
     <div class="tb-now" id="tNow"><b id="tName">—</b><span id="tSub"></span></div>
     <button class="btn tb-cue tb-off" id="tOff" title="Pobierz aktualne wersje wszystkich utworów do pamięci przeglądarki, żeby grały bez internetu (dopóki karta jest otwarta)">⤓ Przygotuj offline</button>
-    <button class="btn tb-cue tb-fit" id="tStops" aria-pressed="true" title="Włącz / wyłącz zatrzymania po numerach oznaczonych ⏸ (wyłącz, żeby puścić cały spektakl bez przerw)">⏸ Zatrzymania</button>
     <button class="btn tb-cue tb-fit" id="tFit" aria-pressed="true" title="Przełącz: cały spektakl w widoku / szczegółowa oś z przewijaniem">⇔ Cały spektakl</button>
     <button class="btn ghost tb-loop" id="tLoop" hidden title="Wyłącz pętlę"></button>
     <button class="btn ghost tb-cont" id="tCont" hidden title="Kontynuuj od miejsca zatrzymania (Shift+spacja)"></button>
@@ -1539,14 +1538,8 @@ function miniWave(v){
 const PLACEHOLDER = 120; // items without a recording yet get 2 min, drawn dashed
 let tlLayout = [];
 /* what happens when a number ends: "marked" = stop only after numbers set to "Stop, czekaj"; "all" = stop after every number; "off" = run straight through */
-let stopMode = "marked"; try { const m=localStorage.getItem("stopMode"); stopMode = m || (localStorage.getItem("honorStops")==="0" ? "off" : "marked"); } catch {}
-let honorStops = stopMode!=="off";
-{ const b=document.getElementById("tStops");
-  const L={marked:["⏸ Stop: oznaczone","Zatrzymuje się tylko po numerach ustawionych w edycji na „Stop, czekaj”. Kliknij, żeby zmienić tryb."],
-           all:["⏸ Stop po każdym","Po każdym numerze playhead staje na początku następnego i czeka na Play. Kliknij, żeby zmienić tryb."],
-           off:["▶ Bez zatrzymań","Cały spektakl leci bez zatrzymań. Kliknij, żeby zmienić tryb."]};
-  const sync=()=>{ honorStops = stopMode!=="off"; b.setAttribute("aria-pressed", String(stopMode!=="off")); b.textContent=L[stopMode][0]; b.title=L[stopMode][1]; };
-  sync(); b.onclick=()=>{ stopMode = stopMode==="marked" ? "all" : stopMode==="all" ? "off" : "marked"; try{ localStorage.setItem("stopMode", stopMode); }catch{} sync(); renderAll(); }; }
+let stopMode = "marked";   // a number marked "⏸ Stop, czekaj" always stops; the global switch was removed on request
+const honorStops = true;
 let tlFit = true; try { tlFit = localStorage.getItem("tlFit")!=="0"; } catch {}
 { const b=document.getElementById("tFit"); const sync=()=>{ b.setAttribute("aria-pressed", String(tlFit)); b.textContent = tlFit ? "⇔ Cały spektakl" : "⇆ Szczegóły"; };
   sync(); b.onclick=()=>{ tlFit=!tlFit; try{ localStorage.setItem("tlFit", tlFit?"1":"0"); }catch{} sync(); renderAll(); }; }       // [{id, start, len}] in seconds, for the playhead
