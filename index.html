@@ -1934,7 +1934,7 @@ function renderList(){
   if (keepFocus){ const el=document.getElementById(keepFocus.id); if(el){ el.focus({preventScroll:true}); try{ if(keepFocus.a!=null) el.setSelectionRange(keepFocus.a,keepFocus.b); }catch{} } }
   ol.querySelectorAll(".item").forEach(li=>{
     const go = ()=>{
-      trSetPos(blockStart(li.dataset.id));
+      jumpOrQueue(li.dataset.id);
       if (isMobile()) openSheet(li.dataset.id); else select(li.dataset.id);
     };
     li.onclick = go; li.onkeydown = e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
@@ -2556,6 +2556,7 @@ setInterval(()=>{ if (tr.playing && document.hidden) step(); }, 250);
 function trPlay(from){
   if (tr.solo) stopSolo();
   computeLayout(); if (!layout.length) return;
+  if (pendingJump){ const L=layout.find(x=>x.id===pendingJump); pendingJump=null; if (L && from==null) tr.marker=L.start; }
   tr.playing=true; tr.held=false; trRun(from!=null ? from : tr.marker);
   cancelAnimationFrame(tr.raf); if (tr.playing) tr.raf=requestAnimationFrame(frame);
   updTransportUI(true);
@@ -2563,7 +2564,8 @@ function trPlay(from){
 function trStop(){
   if (tr.solo){ stopSolo(); return; }
   if (fadeIn) clearFadeIn();
-  if (tr.playing){ tr.stoppedAt=tr.T; tr.playing=false; tr.over=null; internalPause(); cancelAnimationFrame(tr.raf); tr.T=tr.marker; }
+  if (tr.playing){ tr.stoppedAt=tr.T; tr.playing=false; tr.over=null; internalPause(); cancelAnimationFrame(tr.raf); tr.T=tr.marker;
+    if (pendingJump){ const id=pendingJump; pendingJump=null; computeLayout(); const L=layout.find(x=>x.id===id); if (L){ tr.marker=L.start; tr.T=L.start; tr.held=false; } } }
   else { tr.marker=0; tr.T=0; }                         // second Stop: back to the very beginning
   saveTransport(); updTransportUI(true);
 }
@@ -2571,10 +2573,14 @@ function trSetPos(T){
   computeLayout();
   T=Math.max(0, Math.min(T, Math.max(0,layoutTotal-0.01)));
   if (fadeIn) clearFadeIn();
+  pendingJump=null;
   tr.marker=T; tr.held=false; tr.over=null; if (tr.playing && !tr.solo) trRun(T); else tr.T=T;
   saveTransport(); updTransportUI(true);
 }
-function clickClip(id){ trSetPos(blockStart(id)); select(id); }
+/* clicking a number while the show plays only selects it (the music keeps going); the playhead moves there when you stop */
+let pendingJump=null;
+function jumpOrQueue(id){ if (tr.playing && !tr.solo){ pendingJump=id; } else { pendingJump=null; trSetPos(blockStart(id)); } }
+function clickClip(id){ jumpOrQueue(id); select(id); }
 /* per-number player: the current version plays inside the show; older versions play alone (preview) */
 function detailPlaying(s){ const pv=vById(playingVid); if (tr.solo) return tr.solo.vid===playingVid; return tr.playing && tr.L?.id===s.id && (!pv || pv.id===currentVersion(s)?.id); }
 function detailPlay(s){
