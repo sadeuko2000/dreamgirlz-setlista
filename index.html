@@ -322,6 +322,7 @@ html.skin-nocny{--hd:#050506}
 /* prompter (lyrics for the cast) */
 #viewSet{display:grid;grid-template-columns:minmax(0,1fr) var(--pw,minmax(0,1fr));gap:18px;align-items:start}
 #viewSet.p-collapsed{--pw:44px}
+#viewSet.p-fifth:not(.p-collapsed){grid-template-columns:minmax(0,4fr) minmax(0,1fr)}
 #viewSet[hidden],.prompter [hidden]{display:none!important}
 .vs-main{display:flex;flex-direction:column;gap:18px;min-width:0}
 .prompter{position:sticky;top:12px;height:calc(100vh - 24px);display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r);min-width:0;overflow:hidden}
@@ -862,6 +863,7 @@ html.skin-nocny .tb-time{color:var(--fg)}
       <div class="row pr-ctl">
         <div class="pr-size" role="group" aria-label="Wielkość tekstu"><button id="prMinus" aria-label="Mniejszy tekst">A−</button><span id="prSize" class="mono">30</span><button id="prPlus" aria-label="Większy tekst">A+</button></div>
         <button class="btn pr-btn" id="prFollow" aria-pressed="true" title="Przewijaj razem z playheadem">Śledź</button>
+        <button class="btn pr-btn" id="prW" title="Szerokość panelu tekstu: połowa ekranu albo wąski pasek 1/5 (timeline i edycja po 2/5)">⇔ ½</button>
         <button class="btn pr-btn" id="prHc" aria-pressed="false" title="Wysoki kontrast: czarne tło, biały pogrubiony tekst, bieżąca linijka na żółto (np. dla słabego projektora)">◐ Kontrast</button>
         <button class="btn pr-btn" id="prFull" aria-pressed="false" title="Pełny ekran, np. na telewizor">⛶</button>
         <button class="btn pr-btn" id="prCollapse" aria-label="Zwiń panel tekstu" title="Zwiń do boku">⟩</button>
@@ -3336,13 +3338,14 @@ $("#cuSearch").addEventListener("input", e=>{ cueQ=e.target.value; renderCues();
 $("#cuAdd").onclick = () => newCue(tr.T);
 
 /* ---------- prompter: all lyrics in show order, coloured by who sings, scrolling with the playhead ---------- */
-const pr = { size:30, follow:true, collapsed:false, full:false, hc:false, holdUntil:0, html:"", lastTarget:null };
+const pr = { size:30, follow:true, collapsed:false, full:false, hc:false, fifth:false, holdUntil:0, html:"", lastTarget:null };
 try { Object.assign(pr, JSON.parse(localStorage.getItem("prompter")||"{}"), {full:false, html:"", lastTarget:null, holdUntil:0}); } catch {}
 if (window.innerWidth < 1100 && localStorage.getItem("prompter")===null) pr.collapsed = true;
-function savePr(){ try{ localStorage.setItem("prompter", JSON.stringify({size:pr.size, follow:pr.follow, collapsed:pr.collapsed, hc:pr.hc})); }catch{} }
+function savePr(){ try{ localStorage.setItem("prompter", JSON.stringify({size:pr.size, follow:pr.follow, collapsed:pr.collapsed, hc:pr.hc, fifth:pr.fifth})); }catch{} }
 function applyPr(){
   const vs=document.getElementById("viewSet"), ap=document.getElementById("prompter");
-  vs.classList.toggle("p-collapsed", pr.collapsed); ap.classList.toggle("collapsed", pr.collapsed); ap.classList.toggle("full", pr.full);
+  vs.classList.toggle("p-collapsed", pr.collapsed); vs.classList.toggle("p-fifth", !!pr.fifth);
+  { const w=$("#prW"); if (w){ w.textContent = pr.fifth ? "⇔ ⅕" : "⇔ ½"; w.setAttribute("aria-pressed", String(!!pr.fifth)); } } ap.classList.toggle("collapsed", pr.collapsed); ap.classList.toggle("full", pr.full);
   ap.style.setProperty("--pfs", pr.size+"px");
   $("#prSize").textContent = pr.size;
   $("#prFollow").setAttribute("aria-pressed", String(pr.follow));
@@ -3411,6 +3414,7 @@ function updPrompter(force){
 $("#prMinus").onclick=()=>{ pr.size=Math.max(14, pr.size-2); savePr(); applyPr(); };
 $("#prPlus").onclick=()=>{ pr.size=Math.min(96, pr.size+2); savePr(); applyPr(); };
 $("#prHc").onclick=()=>{ pr.hc=!pr.hc; savePr(); applyPr(); };
+$("#prW").onclick=()=>{ pr.fifth=!pr.fifth; savePr(); applyPr(); requestAnimationFrame(()=>window.dispatchEvent(new Event("resize"))); };
 $("#prFollow").onclick=()=>{ pr.follow=!pr.follow; pr.holdUntil=0; savePr(); applyPr(); updPrompter(true); };
 $("#prCollapse").onclick=()=>{ pr.collapsed=true; savePr(); applyPr(); };
 $("#prOpen").onclick=()=>{ pr.collapsed=false; savePr(); pr.html=""; renderPrompter(); };
