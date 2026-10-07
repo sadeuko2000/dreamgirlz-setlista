@@ -812,7 +812,6 @@ html.skin-nocny .tb-time{color:var(--fg)}
   </section>
   <div class="gobar" id="goBar" hidden>
     <button class="gobtn" id="goNext" title="Przejście do następnego numeru: obecny wycisza się, następny startuje od razu (klawisz N)"><span class="go-k">▶▶ Przejdź do</span><b id="goName">—</b><span class="go-sub" id="goSub"></span></button>
-    <button class="gohold" id="goHold" title="Obecny utwór wycisza się, playhead staje na początku następnego numeru i czeka, aż go odpalisz"><b>↘ Wycisz i czekaj</b><span id="goHoldSub"></span></button>
     <div class="go-fade" role="group" aria-label="Rodzaj i czas przejścia"><span class="go-from" id="goFrom"></span><button data-xm="dj" title="Jak fader DJ-ski: poprzedni cichnie, a następny w tym samym czasie się pojawia">✕ Crossfade</button><button data-xm="out" title="Poprzedni cichnie, następny startuje od razu w pełnej głośności">↘ Wycisz</button><button data-xm="hold" title="Poprzedni cichnie, następny czeka na Start">⏸ Wycisz i czekaj</button><span class="go-div"></span><button data-xf="3">3 s</button><button data-xf="4">4 s</button><button data-xf="5">5 s</button><button data-xf="10">10 s</button></div>
   </div>
   <div class="sigbar" id="sigBar" aria-label="Sygnał startu następnego utworu" aria-live="polite"></div>
@@ -2313,7 +2312,6 @@ async function goHold(sec){
   if (tg){ tr.marker=tg.L.start; tr.T=tg.L.start; tr.held=true; } else { tr.T=tr.marker; }
   tr.stoppedAt=null; saveTransport(); updTransportUI(true); renderAll();
 }
-document.getElementById("goHold").onclick=()=>goHold();
 let goKey="";
 function updGo(force){
   const bar=document.getElementById("goBar"); if (!bar) return;
@@ -2330,8 +2328,6 @@ function updGo(force){
   const how = t.type==="dj" ? `crossfade ${t.sec} s` : t.type==="out" ? `wyciszenie ${t.sec} s` : `wyciszenie ${t.sec} s, potem stoi`;
   document.getElementById("goSub").textContent = fading ? (!tr.playing ? "wycisza się…" : "przejście…") : over>=0 ? `∞ +${fmt(over)} · N` : tr.playing ? `${how} · N` : "klawisz N";
   b.classList.toggle("over", over>=0);
-  const h=document.getElementById("goHold"); h.disabled = !tr.playing || !!tr.solo;
-  document.getElementById("goHoldSub").textContent = `${t.sec} s, potem stoi`;
   const fr=document.getElementById("goFrom");
   if (fs && fs.kind!=="break"){ let k=0, nn=0; for (const L of layout){ const x=songs.find(q=>q.id===L.id); if (x && x.kind!=="break") k++; if (L.id===fs.id){ nn=k; break; } }
     fr.innerHTML = `${t.set?"":"domyślnie · "}z <b>${nn}. ${esc(fs.title||"")}</b>`; fr.title = t.set ? "Przejście zapisane w tym numerze" : "Ten numer nie ma zapisanego przejścia: używane jest domyślne. Kliknij rodzaj albo czas, żeby je zapisać."; }
