@@ -154,6 +154,8 @@ body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
   header.top .stats{grid-column:4;grid-row:1}
 }
 @media (max-width:1500px){ header.top .files-h>b, header.top .files-h .fc:not(.ok):not(.miss){display:none} }
+header.top .files-h>b, header.top .files-h>.fc{display:none!important}   /* file status hidden on request; loudness + "upload missing" stay */
+header.top .files-h .sp{flex:1}
 .rail{display:none}
 .tbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-width:0}
 .tb-btn{width:40px;height:34px;border-radius:6px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);display:grid;place-items:center;padding:0;flex:none}
